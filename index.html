@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cadastro de Promotores — Hapvida</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
+body{background:#f0f4f8;color:#222;font-size:13px}
+.h1{background:#003F7F;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:3px solid #FF6B00}
+.h1 h1{font-size:1.15rem;font-weight:700}
+.h1 .sub{font-size:.78rem;color:#cfe0f2}
+.wrap{max-width:1400px;margin:18px auto;padding:0 16px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.authbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.authbar input{padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:.85rem}
+.btn{border:none;padding:7px 14px;border-radius:5px;font-weight:700;cursor:pointer;font-size:.82rem}
+.btn-green{background:#1a7a4a;color:#fff}
+.btn-red{background:#c0392b;color:#fff}
+.btn-blue{background:#0057A8;color:#fff}
+.btn-grey{background:#888;color:#fff}
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.ctrl select,.ctrl input{padding:6px 9px;border:1px solid #ccc;border-radius:5px;font-size:.82rem}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th,td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
+th{background:#f7f9fc;color:#444;font-weight:700;position:sticky;top:0}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#eef4fb}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;color:#fff}
+.b-ativo{background:#1a7a4a}
+.b-outro{background:#c0392b}
+#msg{margin-top:10px;font-size:.85rem;color:#555}
+#count{font-size:.8rem;color:#555;margin-left:auto}
+.opacity-low{opacity:.55}
+/* modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal-h{background:#003F7F;color:#fff;padding:14px 20px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:10px}
+.modal-h b{font-size:1rem;flex:1}
+.modal-h .x{cursor:pointer;font-size:1.2rem;background:none;border:none;color:#fff}
+.modal-b{padding:18px 20px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:.75rem;color:#666;font-weight:700;margin-bottom:4px;text-transform:uppercase}
+.field input,.field select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:.88rem}
+.field input[disabled],.field select[disabled]{background:#f7f7f7;color:#333;border-color:#eee}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end}
+.lockmsg{font-size:.8rem;color:#888;padding:0 20px 10px}
+</style>
+</head>
+<body>
+
+<div class="h1">
+  <h1>👥 Cadastro de Promotores</h1>
+  <span class="sub">Gestão do cadastro de promotores comerciais — Hapvida</span>
+</div>
+
+<div class="wrap">
+
+  <div class="card authbar" id="authBar">
+    <span id="authStatus" style="font-weight:700;color:#c0392b">🔒 Não autenticado — entre para editar</span>
+    <span style="flex:1"></span>
+    <input id="loginEmail" type="email" placeholder="e-mail do supervisor">
+    <input id="loginPass" type="password" placeholder="senha">
+    <button id="loginBtn" class="btn btn-green" onclick="doLogin()">Entrar</button>
+    <button id="logoutBtn" class="btn btn-red" style="display:none" onclick="doLogout()">Sair</button>
+  </div>
+
+  <div class="card">
+    <div class="ctrl">
+      <select id="fGestao" onchange="render()">
+        <option value="TODOS">Todas as gestões</option>
+        <option value="FABIO">Fábio</option>
+        <option value="JOSY">Josy</option>
+        <option value="ADMINISTRATIVO">Administrativo</option>
+        <option value="ACTIONLINE">Actionline</option>
+        <option value="TREINAMENTO">Treinamento</option>
+      </select>
+      <select id="fStatus" onchange="render()">
+        <option value="ATIVO">Somente ATIVO</option>
+        <option value="TODOS">Todos os status</option>
+        <option value="DESLIGADO">Somente DESLIGADO</option>
+        <option value="AFASTADO">Somente AFASTADO</option>
+        <option value="ADMINISTRATIVO">Somente ADMINISTRATIVO</option>
+        <option value="DESATIVADO">Somente DESATIVADO</option>
+      </select>
+      <select id="fSupervisor" onchange="render()">
+        <option value="TODOS">Todos os supervisores</option>
+      </select>
+      <input id="fSearch" type="text" placeholder="Buscar promotor..." oninput="render()" style="min-width:200px">
+      <span id="count"></span>
+      <button class="btn btn-blue" onclick="openModal(null)">+ Adicionar promotor</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Nome Completo</th>
+            <th>Nome Abreviado</th>
+            <th>Supervisor</th>
+            <th>Gestão</th>
+            <th>Organização</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-h">
+      <b id="modalTitle">Promotor</b>
+      <button class="x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-b">
+      <div class="grid2">
+        <div class="field"><label>Nome Completo</label><input id="m_nome_completo"></div>
+        <div class="field"><label>Nome Abreviado</label><input id="m_nome_abreviado"></div>
+        <div class="field"><label>Nome GUP</label><input id="m_nome_gup"></div>
+        <div class="field"><label>Área</label><input id="m_area"></div>
+        <div class="field"><label>Unidade</label><input id="m_unidade"></div>
+        <div class="field"><label>Supervisor</label><input id="m_supervisor"></div>
+        <div class="field"><label>Supervisor Direto</label><input id="m_supervisor_direto"></div>
+        <div class="field"><label>Gestão</label><select id="m_gestao"></select></div>
+        <div class="field"><label>Admissão</label><input id="m_dt_admissao" placeholder="DD/MM/AAAA"></div>
+        <div class="field"><label>Organização</label><input id="m_organizacao" placeholder="TIME PRÓPRIO/TERCEIROS"></div>
+        <div class="field"><label>Status</label><select id="m_status"></select></div>
+        <div class="field"><label>Horário de Entrada</label><input id="m_horario_entrada" type="time"></div>
+        <div class="field"><label>Horário de Saída</label><input id="m_horario_saida" type="time"></div>
+      </div>
+    </div>
+    <div class="lockmsg" id="lockmsg" style="display:none">🔒 Entre com sua conta pra editar este cadastro.</div>
+    <div class="modal-f" id="modalFooter"></div>
+  </div>
+</div>
+
+<script>
+// ════════════ SUPABASE — CRUD CADASTRO PROMOTORES ════════════
+var SUPA_URL = "https://vzzmlikrlgqaaxrufrwq.supabase.co";
+var SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6em1saWtybGdxYWF4cnVmcndxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDI4MjUsImV4cCI6MjA5Nzg3ODgyNX0.kXZrukGda9scxndlZCXzDbpLwFigR1EamI3LMtgBBWw";
+var SB = null;
+try { SB = window.supabase.createClient(SUPA_URL, SUPA_ANON); } catch (e) {}
+
+window._rows = [];
+window._auth = false;
+window._user = '';
+window._loaded = false;
+window._modalAbrev = null; // null = novo registro
+
+var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
+var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO'];
+
+function msg(t, err) {
+  var m = document.getElementById('msg');
+  m.textContent = t;
+  m.style.color = err ? '#c0392b' : '#1a7a4a';
+}
+
+async function initAuth() {
+  if (!SB) { document.getElementById('authStatus').textContent = '⚠️ Supabase não configurado'; return; }
+  var s = await SB.auth.getSession();
+  setAuth(s && s.data && s.data.session ? s.data.session.user : null);
+  if (!window._loaded) loadData();
+}
+function setAuth(user) {
+  window._auth = !!user;
+  window._user = user ? user.email : '';
+  document.getElementById('authStatus').textContent = user ? ('🔓 Editando como ' + user.email) : '🔒 Não autenticado — entre para editar';
+  document.getElementById('authStatus').style.color = user ? '#1a7a4a' : '#c0392b';
+  document.getElementById('loginBtn').style.display = user ? 'none' : '';
+  document.getElementById('logoutBtn').style.display = user ? '' : 'none';
+  document.getElementById('loginEmail').style.display = user ? 'none' : '';
+  document.getElementById('loginPass').style.display = user ? 'none' : '';
+}
+async function doLogin() {
+  if (!SB) { msg('Supabase não configurado.', true); return; }
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var r = await SB.auth.signInWithPassword({ email: email, password: pass });
+  if (r.error) { msg('Falha no login: ' + r.error.message, true); return; }
+  setAuth(r.data.user);
+  msg('Login efetuado.', false);
+  if (!window._loaded) loadData();
+}
+async function doLogout() {
+  if (SB) await SB.auth.signOut();
+  setAuth(null);
+  msg('Sessão encerrada.', false);
+}
+
+// public.promotores: uma pessoa pode aparecer em mais de uma linha (alias historico de nome_gup).
+// A tela edita por pessoa (chave = nome_abreviado) -> ao salvar, update() com .eq('nome_abreviado',
+// abrev) atualiza TODAS as linhas daquela pessoa de uma vez. Deletar = soft delete (status_promotor).
+async function loadData() {
+  if (!SB) { msg('Supabase não configurado.', true); return; }
+  var r = await SB.from('promotores')
+    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,horario_entrada,horario_saida')
+    .order('nome_completo');
+  if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
+  var seen = {}, rows = [];
+  (r.data || []).forEach(function (row) {
+    var ab = row.nome_abreviado;
+    if (!ab || seen[ab]) return;
+    seen[ab] = true;
+    rows.push({
+      id: row.id, nome_abreviado: ab, nome_gup: row.nome_gup || '', nome_completo: row.nome_completo || '',
+      area: row.area || '', unidade: row.unidade || '', supervisor: row.supervisor || '',
+      supervisor_direto: row.supervisor_direto || '', gestao: row.gestao || '', dt_admissao: row.dt_admissao || '',
+      status: row.status_promotor || 'ATIVO', organizacao: row.organizacao || '',
+      horario_entrada: (row.horario_entrada || '').slice(0, 5), horario_saida: (row.horario_saida || '').slice(0, 5)
+    });
+  });
+  window._rows = rows;
+  window._loaded = true;
+  fillSupervisorFilter(rows);
+  render();
+}
+
+function fillSupervisorFilter(rows) {
+  var sel = document.getElementById('fSupervisor');
+  var current = sel.value || 'TODOS';
+  var sups = {};
+  rows.forEach(function (r) { if (r.supervisor) sups[r.supervisor] = true; });
+  var names = Object.keys(sups).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+  sel.innerHTML = '<option value="TODOS">Todos os supervisores</option>'
+    + names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+  if (names.indexOf(current) >= 0 || current === 'TODOS') sel.value = current;
+}
+
+function render() {
+  var gt = document.getElementById('fGestao').value;
+  var st = document.getElementById('fStatus').value;
+  var sup = document.getElementById('fSupervisor').value;
+  var q = (document.getElementById('fSearch').value || '').toLowerCase();
+  var rows = window._rows.filter(function (r) {
+    if (gt !== 'TODOS' && (r.gestao || '').toUpperCase() !== gt) return false;
+    if (st !== 'TODOS' && (r.status || 'ATIVO').toUpperCase() !== st) return false;
+    if (sup !== 'TODOS' && r.supervisor !== sup) return false;
+    if (q) {
+      var blob = (r.nome_completo + ' ' + r.nome_gup + ' ' + r.nome_abreviado + ' ' + r.supervisor).toLowerCase();
+      if (blob.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  document.getElementById('count').textContent = rows.length + ' promotor(es)';
+  var body = '';
+  rows.forEach(function (r) {
+    var stU = (r.status || 'ATIVO').toUpperCase(), ativo = stU === 'ATIVO';
+    body += '<tr onclick="openModal(\'' + esc(r.nome_abreviado).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
+      + '<td>' + esc(r.nome_completo) + '</td>'
+      + '<td>' + esc(r.nome_abreviado) + '</td>'
+      + '<td>' + esc(r.supervisor) + '</td>'
+      + '<td>' + esc(r.gestao) + '</td>'
+      + '<td>' + esc(r.organizacao) + '</td>'
+      + '<td><span class="badge ' + (ativo ? 'b-ativo' : 'b-outro') + '">' + esc(stU) + '</span></td>'
+      + '</tr>';
+  });
+  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="6" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
+}
+function esc(v) { return String(v == null ? '' : v).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+// ── modal ──
+function openModal(abrev) {
+  var isNew = abrev == null;
+  var r = isNew
+    ? { nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
+        supervisor_direto: '', gestao: 'FABIO', dt_admissao: '', organizacao: '', status: 'ATIVO',
+        horario_entrada: '', horario_saida: '' }
+    : window._rows.filter(function (x) { return x.nome_abreviado === abrev; })[0];
+  if (!r) return;
+  window._modalAbrev = isNew ? null : abrev;
+
+  document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : r.nome_completo;
+  var ed = window._auth;
+  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'dt_admissao', 'organizacao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
+    var el = document.getElementById('m_' + f);
+    el.value = r[f] || '';
+    el.disabled = !ed;
+  });
+  var gestSel = document.getElementById('m_gestao');
+  gestSel.innerHTML = GESTOES.map(function (g) { return '<option ' + ((r.gestao || '').toUpperCase() === g ? 'selected' : '') + '>' + g + '</option>'; }).join('');
+  gestSel.disabled = !ed;
+  var statSel = document.getElementById('m_status');
+  statSel.innerHTML = STATUSES.map(function (s) { return '<option ' + ((r.status || 'ATIVO').toUpperCase() === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
+  statSel.disabled = !ed;
+
+  document.getElementById('lockmsg').style.display = ed ? 'none' : '';
+  var footer = document.getElementById('modalFooter');
+  if (ed) {
+    footer.innerHTML = (isNew ? '' : '<button class="btn btn-grey" onclick="deactivateModal()">Desativar</button>')
+      + '<button class="btn btn-blue" onclick="closeModal()">Cancelar</button>'
+      + '<button class="btn btn-green" onclick="saveModal(' + (isNew ? 'true' : 'false') + ')">Salvar</button>';
+  } else {
+    footer.innerHTML = '<button class="btn btn-blue" onclick="closeModal()">Fechar</button>';
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  window._modalAbrev = null;
+}
+
+async function saveModal(isNew) {
+  if (!SB || !window._auth) { msg('Entre para editar.', true); return; }
+  var raw = {};
+  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status', 'horario_entrada', 'horario_saida']
+    .forEach(function (f) { raw[f] = (document.getElementById('m_' + f).value || '').trim(); });
+  if (!raw.nome_completo) { msg('Nome Completo é obrigatório.', true); return; }
+  if (!raw.nome_abreviado) { msg('Nome Abreviado é obrigatório.', true); return; }
+  var o = {
+    nome_completo: raw.nome_completo, nome_gup: raw.nome_gup || null,
+    area: raw.area || null, unidade: raw.unidade || null, supervisor: raw.supervisor || null,
+    supervisor_direto: raw.supervisor_direto || null, gestao: (raw.gestao || '').toUpperCase(),
+    dt_admissao: raw.dt_admissao || null, organizacao: raw.organizacao || null,
+    status_promotor: (raw.status || 'ATIVO').toUpperCase(), updated_by: window._user,
+    horario_entrada: raw.horario_entrada || null, horario_saida: raw.horario_saida || null
+  };
+  var r;
+  if (isNew) {
+    o.nome_abreviado = raw.nome_abreviado.toUpperCase();
+    r = await SB.from('promotores').insert(o).select();
+  } else {
+    r = await SB.from('promotores').update(o).eq('nome_abreviado', window._modalAbrev).select();
+  }
+  if (r.error) { msg('Erro ao salvar: ' + r.error.message, true); return; }
+  msg('Salvo: ' + raw.nome_completo + ' (' + o.status_promotor + ').', false);
+  closeModal();
+  await loadData();
+}
+async function deactivateModal() {
+  document.getElementById('m_status').value = 'DESLIGADO';
+  await saveModal(false);
+}
+
+window.addEventListener('load', function () { initAuth(); });
+</script>
+</body>
+</html>

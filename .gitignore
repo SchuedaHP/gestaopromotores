@@ -1,0 +1,4 @@
+index_local.html
+*.csv
+*.xlsx
+.DS_Store
