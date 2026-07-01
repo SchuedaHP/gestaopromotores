@@ -156,7 +156,7 @@ tbody tr:hover{background:#eef4fb}
         <div class="field"><label>Supervisor Direto</label><input id="m_supervisor_direto"></div>
         <div class="field"><label>Gestão</label><select id="m_gestao"></select></div>
         <div class="field"><label>Admissão</label><input id="m_dt_admissao" placeholder="DD/MM/AAAA"></div>
-        <div class="field"><label>Organização</label><input id="m_organizacao" placeholder="TIME PRÓPRIO/TERCEIROS"></div>
+        <div class="field"><label>Organização</label><select id="m_organizacao"></select></div>
         <div class="field"><label>Status</label><select id="m_status"></select></div>
         <div class="field"><label>Horário de Entrada</label><input id="m_horario_entrada" type="time"></div>
         <div class="field"><label>Horário de Saída</label><input id="m_horario_saida" type="time"></div>
@@ -182,6 +182,7 @@ window._modalAbrev = null; // null = novo registro
 
 var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
 var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO'];
+var ORGANIZACOES = ['TIME PRÓPRIO', 'TIME TERCEIROS'];
 
 function msg(t, err) {
   var m = document.getElementById('msg');
@@ -339,7 +340,7 @@ function openModal(abrev) {
 
   document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : r.nome_completo;
   var ed = window._auth;
-  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'dt_admissao', 'organizacao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
+  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
     var el = document.getElementById('m_' + f);
     el.value = r[f] || '';
     el.disabled = !ed;
@@ -350,6 +351,11 @@ function openModal(abrev) {
   var statSel = document.getElementById('m_status');
   statSel.innerHTML = STATUSES.map(function (s) { return '<option ' + ((r.status || 'ATIVO').toUpperCase() === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
   statSel.disabled = !ed;
+  var orgSel = document.getElementById('m_organizacao');
+  var orgVal = (r.organizacao || '').toUpperCase();
+  orgSel.innerHTML = '<option value=""' + (orgVal ? '' : ' selected') + '>(não informado)</option>'
+    + ORGANIZACOES.map(function (o) { return '<option ' + (orgVal === o ? 'selected' : '') + '>' + o + '</option>'; }).join('');
+  orgSel.disabled = !ed;
 
   document.getElementById('lockmsg').style.display = ed ? 'none' : '';
   var footer = document.getElementById('modalFooter');
