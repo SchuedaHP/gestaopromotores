@@ -45,6 +45,7 @@ tbody tr:hover{background:#eef4fb}
 .modal-b{padding:18px 20px}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:.75rem;color:#666;font-weight:700;margin-bottom:4px;text-transform:uppercase}
+.field label .req{color:#c0392b}
 .field input,.field select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:.88rem}
 .field input[disabled],.field select[disabled]{background:#f7f7f7;color:#333;border-color:#eee}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
@@ -147,19 +148,19 @@ tbody tr:hover{background:#eef4fb}
     </div>
     <div class="modal-b">
       <div class="grid2">
-        <div class="field"><label>Nome Completo</label><input id="m_nome_completo"></div>
-        <div class="field"><label>Nome Abreviado</label><input id="m_nome_abreviado"></div>
+        <div class="field"><label>Nome Completo <span class="req">*</span></label><input id="m_nome_completo"></div>
+        <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"></div>
         <div class="field"><label>Nome GUP</label><input id="m_nome_gup"></div>
-        <div class="field"><label>Área</label><input id="m_area"></div>
-        <div class="field"><label>Unidade</label><input id="m_unidade"></div>
-        <div class="field"><label>Supervisor</label><input id="m_supervisor"></div>
-        <div class="field"><label>Supervisor Direto</label><input id="m_supervisor_direto"></div>
-        <div class="field"><label>Gestão</label><select id="m_gestao"></select></div>
-        <div class="field"><label>Admissão</label><input id="m_dt_admissao" placeholder="DD/MM/AAAA"></div>
-        <div class="field"><label>Organização</label><select id="m_organizacao"></select></div>
-        <div class="field"><label>Status</label><select id="m_status"></select></div>
-        <div class="field"><label>Horário de Entrada</label><input id="m_horario_entrada" type="time"></div>
-        <div class="field"><label>Horário de Saída</label><input id="m_horario_saida" type="time"></div>
+        <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"></div>
+        <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"></div>
+        <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"></div>
+        <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"></div>
+        <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select></div>
+        <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA"></div>
+        <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select></div>
+        <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select></div>
+        <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"></div>
+        <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"></div>
       </div>
     </div>
     <div class="lockmsg" id="lockmsg" style="display:none">🔒 Entre com sua conta pra editar este cadastro.</div>
