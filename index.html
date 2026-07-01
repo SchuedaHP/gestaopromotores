@@ -25,7 +25,8 @@ body{background:#f0f4f8;color:#222;font-size:13px}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
 th,td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
-th{background:#f7f9fc;color:#444;font-weight:700;position:sticky;top:0}
+th{background:#f7f9fc;color:#444;font-weight:700;position:sticky;top:0;cursor:pointer;user-select:none}
+th .arrow{margin-left:4px;font-size:.7rem;color:#0057A8}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:#eef4fb}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;color:#fff}
@@ -49,9 +50,31 @@ tbody tr:hover{background:#eef4fb}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end}
 .lockmsg{font-size:.8rem;color:#888;padding:0 20px 10px}
+/* login overlay (senha de visualização) */
+#login-overlay{position:fixed;inset:0;background:#f0f4f8;display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-overlay.hidden{display:none}
+.login-box{background:#fff;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:40px 36px;width:100%;max-width:360px;text-align:center}
+.login-logo{width:60px;height:60px;background:#003F7F;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:26px;color:#fff;font-weight:700}
+.login-box h2{font-size:1.1rem;margin-bottom:4px}
+.login-box p{font-size:.85rem;color:#666;margin-bottom:18px}
+.login-box input{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:5px;font-size:.9rem;margin-bottom:12px}
+.login-box button{width:100%;padding:9px 12px;border:none;border-radius:5px;background:#0057A8;color:#fff;font-weight:700;cursor:pointer;font-size:.88rem}
+.login-error{color:#c0392b;font-size:.8rem;min-height:16px;margin-top:8px}
 </style>
 </head>
 <body>
+
+<!-- Login overlay (senha de visualização) -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">H</div>
+    <h2>Cadastro de Promotores</h2>
+    <p>Hapvida — acesso restrito</p>
+    <input type="password" id="login-input" placeholder="Digite a senha" autocomplete="current-password">
+    <button onclick="checkLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
 
 <div class="h1">
   <h1>👥 Cadastro de Promotores</h1>
@@ -98,12 +121,13 @@ tbody tr:hover{background:#eef4fb}
       <table id="tbl">
         <thead>
           <tr>
-            <th>Nome Completo</th>
-            <th>Nome Abreviado</th>
-            <th>Supervisor</th>
-            <th>Gestão</th>
-            <th>Organização</th>
-            <th>Status</th>
+            <th onclick="sortBy('nome_completo')">Nome Completo<span class="arrow" data-col="nome_completo"></span></th>
+            <th onclick="sortBy('nome_abreviado')">Nome Abreviado<span class="arrow" data-col="nome_abreviado"></span></th>
+            <th onclick="sortBy('supervisor')">Supervisor<span class="arrow" data-col="supervisor"></span></th>
+            <th onclick="sortBy('gestao')">Gestão<span class="arrow" data-col="gestao"></span></th>
+            <th onclick="sortBy('organizacao')">Organização<span class="arrow" data-col="organizacao"></span></th>
+            <th onclick="sortBy('dt_admissao')">Admissão<span class="arrow" data-col="dt_admissao"></span></th>
+            <th onclick="sortBy('status')">Status<span class="arrow" data-col="status"></span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -236,6 +260,37 @@ function fillSupervisorFilter(rows) {
   if (names.indexOf(current) >= 0 || current === 'TODOS') sel.value = current;
 }
 
+window._sort = { col: null, dir: 1 };
+function sortBy(col) {
+  if (window._sort.col === col) { window._sort.dir *= -1; } else { window._sort.col = col; window._sort.dir = 1; }
+  render();
+}
+function admissaoKey(v) {
+  var p = (v || '').split('/');
+  if (p.length !== 3) return '';
+  return p[2] + p[1].padStart(2, '0') + p[0].padStart(2, '0');
+}
+function sortRows(rows) {
+  var col = window._sort.col, dir = window._sort.dir;
+  if (!col) return rows;
+  var arr = rows.slice();
+  arr.sort(function (a, b) {
+    var av, bv;
+    if (col === 'dt_admissao') { av = admissaoKey(a.dt_admissao); bv = admissaoKey(b.dt_admissao); }
+    else { av = (a[col] || '').toString().toLowerCase(); bv = (b[col] || '').toString().toLowerCase(); }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+  return arr;
+}
+function updateHeaderArrows() {
+  document.querySelectorAll('#tbl thead .arrow').forEach(function (el) {
+    var col = el.getAttribute('data-col');
+    el.textContent = window._sort.col === col ? (window._sort.dir === 1 ? ' ▲' : ' ▼') : '';
+  });
+}
+
 function render() {
   var gt = document.getElementById('fGestao').value;
   var st = document.getElementById('fStatus').value;
@@ -251,6 +306,7 @@ function render() {
     }
     return true;
   });
+  rows = sortRows(rows);
   document.getElementById('count').textContent = rows.length + ' promotor(es)';
   var body = '';
   rows.forEach(function (r) {
@@ -261,10 +317,12 @@ function render() {
       + '<td>' + esc(r.supervisor) + '</td>'
       + '<td>' + esc(r.gestao) + '</td>'
       + '<td>' + esc(r.organizacao) + '</td>'
+      + '<td>' + esc(r.dt_admissao) + '</td>'
       + '<td><span class="badge ' + (ativo ? 'b-ativo' : 'b-outro') + '">' + esc(stU) + '</span></td>'
       + '</tr>';
   });
-  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="6" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
+  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="7" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
+  updateHeaderArrows();
 }
 function esc(v) { return String(v == null ? '' : v).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
@@ -339,6 +397,28 @@ async function saveModal(isNew) {
 async function deactivateModal() {
   document.getElementById('m_status').value = 'DESLIGADO';
   await saveModal(false);
+}
+
+// ── senha de visualização (independente do login Supabase, que só libera edição) ──
+(function () {
+  var KEY = 'gestaopromotores_auth';
+  if (sessionStorage.getItem(KEY) === '1') {
+    document.getElementById('login-overlay').classList.add('hidden');
+  }
+  document.getElementById('login-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') checkLogin();
+  });
+})();
+function checkLogin() {
+  var val = document.getElementById('login-input').value;
+  if (val === 'hapvida1234') {
+    sessionStorage.setItem('gestaopromotores_auth', '1');
+    document.getElementById('login-overlay').classList.add('hidden');
+  } else {
+    document.getElementById('login-error').textContent = 'Senha incorreta. Tente novamente.';
+    document.getElementById('login-input').value = '';
+    document.getElementById('login-input').focus();
+  }
 }
 
 window.addEventListener('load', function () { initAuth(); });
