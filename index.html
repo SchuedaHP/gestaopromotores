@@ -380,6 +380,17 @@ async function saveModal(isNew) {
     .forEach(function (f) { raw[f] = (document.getElementById('m_' + f).value || '').trim(); });
   if (!raw.nome_completo) { msg('Nome Completo é obrigatório.', true); return; }
   if (!raw.nome_abreviado) { msg('Nome Abreviado é obrigatório.', true); return; }
+  if (isNew) {
+    var required = [
+      ['area', 'Área'], ['unidade', 'Unidade'], ['supervisor_direto', 'Supervisor Direto'],
+      ['supervisor', 'Supervisor'], ['gestao', 'Gestão'], ['dt_admissao', 'Admissão'],
+      ['organizacao', 'Organização'], ['status', 'Status'],
+      ['horario_entrada', 'Horário de Entrada'], ['horario_saida', 'Horário de Saída']
+    ];
+    for (var i = 0; i < required.length; i++) {
+      if (!raw[required[i][0]]) { msg(required[i][1] + ' é obrigatório.', true); return; }
+    }
+  }
   var o = {
     nome_completo: raw.nome_completo, nome_gup: raw.nome_gup || null,
     area: raw.area || null, unidade: raw.unidade || null, supervisor: raw.supervisor || null,
