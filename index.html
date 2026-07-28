@@ -110,6 +110,7 @@ tbody tr:hover{background:#eef4fb}
         <option value="AFASTADO">Somente AFASTADO</option>
         <option value="ADMINISTRATIVO">Somente ADMINISTRATIVO</option>
         <option value="DESATIVADO">Somente DESATIVADO</option>
+        <option value="FÉRIAS">Somente FÉRIAS</option>
       </select>
       <select id="fSupervisor" onchange="render()">
         <option value="TODOS">Todos os supervisores</option>
@@ -182,7 +183,7 @@ window._loaded = false;
 window._modalAbrev = null; // null = novo registro
 
 var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
-var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO'];
+var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO', 'FÉRIAS'];
 var ORGANIZACOES = ['TIME PRÓPRIO', 'TIME TERCEIROS'];
 
 function msg(t, err) {
