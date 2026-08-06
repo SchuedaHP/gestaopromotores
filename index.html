@@ -21,6 +21,15 @@ body{background:#f0f4f8;color:#222;font-size:13px}
 .btn-blue{background:#0057A8;color:#fff}
 .btn-grey{background:#888;color:#fff}
 .ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+/* KPIs de ativos por gestao */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid #e2e8f0;border-left:5px solid #0057A8;border-radius:8px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.kpi:hover{box-shadow:0 3px 12px rgba(0,63,127,.14);transform:translateY(-1px)}
+.kpi.k-josy{border-left-color:#FF6B00}
+.kpi .k-lbl{font-size:.72rem;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.4px}
+.kpi .k-val{font-size:1.9rem;font-weight:700;color:#003F7F;line-height:1.15;margin-top:2px}
+.kpi.k-josy .k-val{color:#c25200}
+.kpi .k-sub{font-size:.72rem;color:#888}
 .ctrl select,.ctrl input{padding:6px 9px;border:1px solid #ccc;border-radius:5px;font-size:.82rem}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
@@ -91,6 +100,19 @@ tbody tr:hover{background:#eef4fb}
     <input id="loginPass" type="password" placeholder="senha">
     <button id="loginBtn" class="btn btn-green" onclick="doLogin()">Entrar</button>
     <button id="logoutBtn" class="btn btn-red" style="display:none" onclick="doLogout()">Sair</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi k-fabio" onclick="kpiFilter('FABIO')" title="Clique para filtrar a lista">
+      <div class="k-lbl">Ativos — Gestão Fábio</div>
+      <div class="k-val" id="kpiFabio">—</div>
+      <div class="k-sub">promotores com status ATIVO</div>
+    </div>
+    <div class="kpi k-josy" onclick="kpiFilter('JOSY')" title="Clique para filtrar a lista">
+      <div class="k-lbl">Ativos — Gestão Josy</div>
+      <div class="k-val" id="kpiJosy">—</div>
+      <div class="k-sub">promotores com status ATIVO</div>
+    </div>
   </div>
 
   <div class="card">
@@ -251,6 +273,7 @@ async function loadData() {
   window._rows = rows;
   window._loaded = true;
   fillSupervisorFilter(rows);
+  renderKpis();
   render();
 }
 
@@ -263,6 +286,27 @@ function fillSupervisorFilter(rows) {
   sel.innerHTML = '<option value="TODOS">Todos os supervisores</option>'
     + names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
   if (names.indexOf(current) >= 0 || current === 'TODOS') sel.value = current;
+}
+
+// KPIs de ATIVOS por gestao -- contam a base inteira (nao seguem os filtros da tabela).
+// _rows ja vem deduplicado por nome_abreviado, entao a contagem e de PESSOAS, nao de linhas
+// (o cadastro tem alias historico de nome_gup que repete a mesma pessoa).
+function renderKpis() {
+  var n = { FABIO: 0, JOSY: 0 };
+  window._rows.forEach(function (r) {
+    if ((r.status || 'ATIVO').toUpperCase() !== 'ATIVO') return;
+    var g = (r.gestao || '').toUpperCase();
+    if (n[g] !== undefined) n[g]++;
+  });
+  document.getElementById('kpiFabio').textContent = n.FABIO;
+  document.getElementById('kpiJosy').textContent = n.JOSY;
+}
+function kpiFilter(gestao) {
+  document.getElementById('fGestao').value = gestao;
+  document.getElementById('fStatus').value = 'ATIVO';
+  document.getElementById('fSupervisor').value = 'TODOS';
+  document.getElementById('fSearch').value = '';
+  render();
 }
 
 window._sort = { col: null, dir: 1 };
