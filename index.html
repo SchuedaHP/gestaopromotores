@@ -66,7 +66,7 @@ tbody tr:hover{background:#eef4fb}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end}
 .lockmsg{font-size:.8rem;color:#888;padding:0 20px 10px}
-/* login overlay (senha de visualização) */
+/* login overlay (e-mail + senha — bloqueio principal da tela) */
 #login-overlay{position:fixed;inset:0;background:#f0f4f8;display:flex;align-items:center;justify-content:center;z-index:9999}
 #login-overlay.hidden{display:none}
 .login-box{background:#fff;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:40px 36px;width:100%;max-width:360px;text-align:center}
@@ -80,14 +80,15 @@ tbody tr:hover{background:#eef4fb}
 </head>
 <body>
 
-<!-- Login overlay (senha de visualização) -->
+<!-- Login overlay (e-mail + senha do Supabase) -->
 <div id="login-overlay">
   <div class="login-box">
     <div class="login-logo">H</div>
     <h2>Cadastro de Promotores</h2>
-    <p>Hapvida — acesso restrito</p>
-    <input type="password" id="login-input" placeholder="Digite a senha" autocomplete="current-password">
-    <button onclick="checkLogin()">Entrar</button>
+    <p>Hapvida — entre com seu e-mail corporativo</p>
+    <input type="email" id="login-email" placeholder="E-mail" autocomplete="username">
+    <input type="password" id="login-input" placeholder="Senha" autocomplete="current-password">
+    <button id="login-btn" onclick="checkLogin()">Entrar</button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -100,11 +101,8 @@ tbody tr:hover{background:#eef4fb}
 <div class="wrap">
 
   <div class="card authbar" id="authBar">
-    <span id="authStatus" style="font-weight:700;color:#c0392b">🔒 Não autenticado — entre para editar</span>
+    <span id="authStatus" style="font-weight:700;color:#c0392b">🔒 Não autenticado</span>
     <span style="flex:1"></span>
-    <input id="loginEmail" type="email" placeholder="e-mail do supervisor">
-    <input id="loginPass" type="password" placeholder="senha">
-    <button id="loginBtn" class="btn btn-green" onclick="doLogin()">Entrar</button>
     <button id="logoutBtn" class="btn btn-red" style="display:none" onclick="doLogout()">Sair</button>
   </div>
 
@@ -224,36 +222,59 @@ function msg(t, err) {
   m.style.color = err ? '#c0392b' : '#1a7a4a';
 }
 
+// O login (e-mail + senha, contas do Supabase Auth) e o bloqueio PRINCIPAL da tela:
+// sem sessao valida o overlay nao sai e os dados nem chegam a ser carregados. Quem entra
+// ja entra podendo editar -- a antiga senha unica de visualizacao foi aposentada.
+// A sessao fica no localStorage do navegador, entao F5 nao pede senha de novo.
 async function initAuth() {
-  if (!SB) { document.getElementById('authStatus').textContent = '⚠️ Supabase não configurado'; return; }
+  if (!SB) { document.getElementById('login-error').textContent = 'Supabase não configurado — avise o administrador.'; return; }
   var s = await SB.auth.getSession();
-  setAuth(s && s.data && s.data.session ? s.data.session.user : null);
+  var user = s && s.data && s.data.session ? s.data.session.user : null;
+  if (user) entrar(user); else abrirLogin();
+}
+function abrirLogin() {
+  document.getElementById('login-overlay').classList.remove('hidden');
+  setTimeout(function () { var e = document.getElementById('login-email'); if (e) e.focus(); }, 30);
+}
+function entrar(user) {
+  setAuth(user);
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('login-input').value = '';
   if (!window._loaded) loadData();
 }
 function setAuth(user) {
   window._auth = !!user;
   window._user = user ? user.email : '';
-  document.getElementById('authStatus').textContent = user ? ('🔓 Editando como ' + user.email) : '🔒 Não autenticado — entre para editar';
-  document.getElementById('authStatus').style.color = user ? '#1a7a4a' : '#c0392b';
-  document.getElementById('loginBtn').style.display = user ? 'none' : '';
+  var st = document.getElementById('authStatus');
+  st.textContent = user ? ('🔓 Conectado como ' + user.email) : '🔒 Não autenticado';
+  st.style.color = user ? '#1a7a4a' : '#c0392b';
   document.getElementById('logoutBtn').style.display = user ? '' : 'none';
-  document.getElementById('loginEmail').style.display = user ? 'none' : '';
-  document.getElementById('loginPass').style.display = user ? 'none' : '';
 }
-async function doLogin() {
-  if (!SB) { msg('Supabase não configurado.', true); return; }
-  var email = document.getElementById('loginEmail').value.trim();
-  var pass = document.getElementById('loginPass').value;
+async function checkLogin() {
+  var btn = document.getElementById('login-btn'), err = document.getElementById('login-error');
+  if (!SB) { err.textContent = 'Supabase não configurado — avise o administrador.'; return; }
+  var email = (document.getElementById('login-email').value || '').trim();
+  var pass = document.getElementById('login-input').value;
+  if (!email || !pass) { err.textContent = 'Informe e-mail e senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...'; err.textContent = '';
   var r = await SB.auth.signInWithPassword({ email: email, password: pass });
-  if (r.error) { msg('Falha no login: ' + r.error.message, true); return; }
-  setAuth(r.data.user);
-  msg('Login efetuado.', false);
-  if (!window._loaded) loadData();
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (r.error) {
+    err.textContent = /invalid/i.test(r.error.message || '')
+      ? 'E-mail ou senha incorretos.' : ('Falha no login: ' + r.error.message);
+    document.getElementById('login-input').value = '';
+    document.getElementById('login-input').focus();
+    return;
+  }
+  entrar(r.data.user);
 }
 async function doLogout() {
   if (SB) await SB.auth.signOut();
+  window._rows = []; window._loaded = false;
   setAuth(null);
-  msg('Sessão encerrada.', false);
+  renderKpis(); render(); msg('', false);
+  abrirLogin();
 }
 
 // public.promotores: uma pessoa pode aparecer em mais de uma linha (alias historico de nome_gup).
@@ -489,27 +510,12 @@ async function deactivateModal() {
   await saveModal(false);
 }
 
-// ── senha de visualização (independente do login Supabase, que só libera edição) ──
-(function () {
-  var KEY = 'gestaopromotores_auth';
-  if (sessionStorage.getItem(KEY) === '1') {
-    document.getElementById('login-overlay').classList.add('hidden');
-  }
-  document.getElementById('login-input').addEventListener('keydown', function (e) {
+// ── Enter em qualquer um dos dois campos envia o login ──
+['login-email', 'login-input'].forEach(function (id) {
+  document.getElementById(id).addEventListener('keydown', function (e) {
     if (e.key === 'Enter') checkLogin();
   });
-})();
-function checkLogin() {
-  var val = document.getElementById('login-input').value;
-  if (val === 'hapvida1234') {
-    sessionStorage.setItem('gestaopromotores_auth', '1');
-    document.getElementById('login-overlay').classList.add('hidden');
-  } else {
-    document.getElementById('login-error').textContent = 'Senha incorreta. Tente novamente.';
-    document.getElementById('login-input').value = '';
-    document.getElementById('login-input').focus();
-  }
-}
+});
 
 window.addEventListener('load', function () { initAuth(); });
 </script>
