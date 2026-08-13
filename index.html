@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Cadastro de Promotores — Hapvida</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23003F7F'/><text x='50' y='72' text-anchor='middle' font-size='64' font-family='Arial,sans-serif' font-weight='bold' fill='white'>H</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
@@ -14,12 +15,17 @@ body{background:#f0f4f8;color:#222;font-size:13px}
 .wrap{max-width:1400px;margin:18px auto;padding:0 16px}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 18px;margin-bottom:14px}
 .authbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.authbar input{padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:.85rem}
 .btn{border:none;padding:7px 14px;border-radius:5px;font-weight:700;cursor:pointer;font-size:.82rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-green{background:#1a7a4a;color:#fff}
 .btn-red{background:#c0392b;color:#fff}
 .btn-blue{background:#0057A8;color:#fff}
 .btn-grey{background:#888;color:#fff}
+.btn-ghost{background:#fff;color:#0057A8;border:1px solid #cbd8e6}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.pill-admin{background:#e7f0fa;color:#00519c;border:1px solid #c6dcf3}
+.pill-sup{background:#fdf3e7;color:#a35b00;border:1px solid #f0dcbe}
+.pill-ler{background:#f1f5f9;color:#5b6b7c;border:1px solid #dde5ee}
 .ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 /* KPIs de ativos por gestao */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:14px}
@@ -37,24 +43,38 @@ body{background:#f0f4f8;color:#222;font-size:13px}
 .kpi .k-org.k-org-sem{background:#fdf3e7;border-color:#f0dcbe;color:#9a6a1c}
 .kpi .k-org.k-org-sem b{color:#b3701a}
 .ctrl select,.ctrl input{padding:6px 9px;border:1px solid #ccc;border-radius:5px;font-size:.82rem}
-.tbl-wrap{overflow-x:auto}
+.tbl-wrap{overflow-x:auto;position:relative;min-height:120px}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
 th,td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
 th{background:#f7f9fc;color:#444;font-weight:700;position:sticky;top:0;cursor:pointer;user-select:none}
 th .arrow{margin-left:4px;font-size:.7rem;color:#0057A8}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:#eef4fb}
+td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;color:#fff}
 .b-ativo{background:#1a7a4a}
-.b-outro{background:#c0392b}
-#msg{margin-top:10px;font-size:.85rem;color:#555}
+.b-pausa{background:#c98a1b}
+.b-fora{background:#8a94a0}
+.b-adm{background:#0057A8}
+.warn-inc{color:#c98a1b;font-weight:700;margin-left:5px;cursor:help}
+.alias-tag{display:inline-block;margin-left:6px;font-size:.68rem;color:#00519c;background:#e7f0fa;border:1px solid #c6dcf3;border-radius:9px;padding:1px 7px}
 #count{font-size:.8rem;color:#555;margin-left:auto}
 .opacity-low{opacity:.55}
+.loading{position:absolute;inset:0;background:rgba(255,255,255,.75);display:none;align-items:center;justify-content:center;font-weight:700;color:#0057A8;z-index:5}
+.loading.on{display:flex}
+.spin{width:16px;height:16px;border:3px solid #cbd8e6;border-top-color:#0057A8;border-radius:50%;display:inline-block;margin-right:8px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* toast */
+#toast{position:fixed;right:18px;bottom:18px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:#123; color:#fff;padding:11px 15px;border-radius:7px;font-size:.83rem;box-shadow:0 6px 22px rgba(0,0,0,.22);max-width:380px;animation:tin .18s ease-out}
+.toast.ok{background:#1a7a4a}
+.toast.err{background:#c0392b}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
 /* modal */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;padding:12px}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:10px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
-.modal-h{background:#003F7F;color:#fff;padding:14px 20px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:10px}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal-h{background:#003F7F;color:#fff;padding:14px 20px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:2}
 .modal-h b{font-size:1rem;flex:1}
 .modal-h .x{cursor:pointer;font-size:1.2rem;background:none;border:none;color:#fff}
 .modal-b{padding:18px 20px}
@@ -63,11 +83,15 @@ tbody tr:hover{background:#eef4fb}
 .field label .req{color:#c0392b}
 .field input,.field select{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:.88rem}
 .field input[disabled],.field select[disabled]{background:#f7f7f7;color:#333;border-color:#eee}
+.field input.bad,.field select.bad{border-color:#c0392b;background:#fdf3f2}
+.field .err{color:#c0392b;font-size:.74rem;min-height:14px;margin-top:3px}
+.field .hint{color:#7a8896;font-size:.72rem;margin-top:3px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
-.modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end}
-.lockmsg{font-size:.8rem;color:#888;padding:0 20px 10px}
+.modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:0;background:#fff}
+.lockmsg{font-size:.8rem;color:#8a6d1c;background:#fdf7e7;border-top:1px solid #f0e2bd;padding:10px 20px}
+.stamp{font-size:.73rem;color:#8a94a0;padding:0 20px 12px}
 /* login overlay (e-mail + senha — bloqueio principal da tela) */
-#login-overlay{position:fixed;inset:0;background:#f0f4f8;display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-overlay{position:fixed;inset:0;background:#f0f4f8;display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
 #login-overlay.hidden{display:none}
 .login-box{background:#fff;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:40px 36px;width:100%;max-width:360px;text-align:center}
 .login-logo{width:60px;height:60px;background:#003F7F;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:26px;color:#fff;font-weight:700}
@@ -76,6 +100,12 @@ tbody tr:hover{background:#eef4fb}
 .login-box input{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:5px;font-size:.9rem;margin-bottom:12px}
 .login-box button{width:100%;padding:9px 12px;border:none;border-radius:5px;background:#0057A8;color:#fff;font-weight:700;cursor:pointer;font-size:.88rem}
 .login-error{color:#c0392b;font-size:.8rem;min-height:16px;margin-top:8px}
+@media (max-width:900px){
+  .grid2{grid-template-columns:1fr}
+  .col-opt{display:none}
+  #count{margin-left:0}
+  .ctrl select,.ctrl input{flex:1 1 140px}
+}
 </style>
 </head>
 <body>
@@ -102,6 +132,7 @@ tbody tr:hover{background:#eef4fb}
 
   <div class="card authbar" id="authBar">
     <span id="authStatus" style="font-weight:700;color:#c0392b">🔒 Não autenticado</span>
+    <span id="perfilPill"></span>
     <span style="flex:1"></span>
     <button id="logoutBtn" class="btn btn-red" style="display:none" onclick="doLogout()">Sair</button>
   </div>
@@ -144,30 +175,35 @@ tbody tr:hover{background:#eef4fb}
       <select id="fSupervisor" onchange="render()">
         <option value="TODOS">Todos os supervisores</option>
       </select>
-      <input id="fSearch" type="text" placeholder="Buscar promotor..." oninput="render()" style="min-width:200px">
+      <input id="fSearch" type="text" placeholder="Buscar nome, GUP ou e-mail..." oninput="render()" style="min-width:210px">
       <span id="count"></span>
-      <button class="btn btn-blue" onclick="openModal(null)">+ Adicionar promotor</button>
+      <button class="btn btn-ghost" id="btnExport" onclick="exportXlsx()">⬇ Exportar Excel</button>
+      <button class="btn btn-blue" id="btnNovo" onclick="openModal(null)">+ Adicionar promotor</button>
     </div>
     <div class="tbl-wrap">
+      <div class="loading" id="loading"><span class="spin"></span>carregando cadastro...</div>
       <table id="tbl">
         <thead>
           <tr>
             <th onclick="sortBy('nome_completo')">Nome Completo<span class="arrow" data-col="nome_completo"></span></th>
             <th onclick="sortBy('nome_abreviado')">Nome Abreviado<span class="arrow" data-col="nome_abreviado"></span></th>
+            <th onclick="sortBy('email')">E-mail<span class="arrow" data-col="email"></span></th>
             <th onclick="sortBy('supervisor')">Supervisor<span class="arrow" data-col="supervisor"></span></th>
             <th onclick="sortBy('gestao')">Gestão<span class="arrow" data-col="gestao"></span></th>
-            <th onclick="sortBy('organizacao')">Organização<span class="arrow" data-col="organizacao"></span></th>
+            <th class="col-opt" onclick="sortBy('organizacao')">Organização<span class="arrow" data-col="organizacao"></span></th>
             <th onclick="sortBy('dt_admissao')">Admissão<span class="arrow" data-col="dt_admissao"></span></th>
             <th onclick="sortBy('status')">Status<span class="arrow" data-col="status"></span></th>
+            <th class="col-opt" onclick="sortBy('updated_at')">Atualizado<span class="arrow" data-col="updated_at"></span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    <div id="msg"></div>
   </div>
 
 </div>
+
+<div id="toast"></div>
 
 <!-- ═══ MODAL ═══ -->
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
@@ -178,22 +214,24 @@ tbody tr:hover{background:#eef4fb}
     </div>
     <div class="modal-b">
       <div class="grid2">
-        <div class="field"><label>Nome Completo <span class="req">*</span></label><input id="m_nome_completo"></div>
-        <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"></div>
-        <div class="field"><label>Nome GUP</label><input id="m_nome_gup"></div>
-        <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"></div>
-        <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"></div>
-        <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"></div>
-        <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"></div>
-        <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select></div>
-        <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA"></div>
-        <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select></div>
-        <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select></div>
-        <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"></div>
-        <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"></div>
+        <div class="field"><label>Nome Completo <span class="req">*</span></label><input id="m_nome_completo"><div class="err" id="e_nome_completo"></div></div>
+        <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"><div class="err" id="e_nome_abreviado"></div></div>
+        <div class="field"><label>Nome GUP</label><input id="m_nome_gup"><div class="err" id="e_nome_gup"></div><div class="hint" id="h_nome_gup"></div></div>
+        <div class="field"><label>E-mail</label><input id="m_email" type="email" placeholder="nome@hapvida.com.br"><div class="err" id="e_email"></div></div>
+        <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"><div class="err" id="e_area"></div></div>
+        <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"><div class="err" id="e_unidade"></div></div>
+        <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"><div class="err" id="e_supervisor"></div></div>
+        <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"><div class="err" id="e_supervisor_direto"></div></div>
+        <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select><div class="err" id="e_gestao"></div></div>
+        <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10"><div class="err" id="e_dt_admissao"></div></div>
+        <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select><div class="err" id="e_organizacao"></div></div>
+        <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select><div class="err" id="e_status"></div></div>
+        <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"><div class="err" id="e_horario_entrada"></div></div>
+        <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"><div class="err" id="e_horario_saida"></div></div>
       </div>
     </div>
-    <div class="lockmsg" id="lockmsg" style="display:none">🔒 Entre com sua conta pra editar este cadastro.</div>
+    <div class="stamp" id="stamp"></div>
+    <div class="lockmsg" id="lockmsg" style="display:none"></div>
     <div class="modal-f" id="modalFooter"></div>
   </div>
 </div>
@@ -206,28 +244,63 @@ var SUPA_ANON = "sb_publishable_ScPAaVadrMCmJ01b___a4A_m4F8_VJ8";
 var SB = null;
 try { SB = window.supabase.createClient(SUPA_URL, SUPA_ANON); } catch (e) {}
 
-window._rows = [];
+window._rows = [];      // linhas cruas do banco (1 por id)
+window._pessoas = [];   // 1 por pessoa (agrupa as linhas de alias do nome GUP)
+window._perfil = { papel: 'leitura', gestao: '' };
 window._auth = false;
 window._user = '';
 window._loaded = false;
-window._modalAbrev = null; // null = novo registro
+window._modalKey = null; // null = novo registro
 
 var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
 var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO', 'FÉRIAS', 'LICENÇA'];
 var ORGANIZACOES = ['TIME PRÓPRIO', 'TIME TERCEIROS'];
+// campos que o modal edita; nome_gup e tratado a parte (e por linha, nao por pessoa)
+var CAMPOS = ['nome_completo', 'nome_abreviado', 'nome_gup', 'email', 'area', 'unidade', 'supervisor',
+  'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status', 'horario_entrada', 'horario_saida'];
+// texto livre que vai para o de-para -> normalizar sempre (o casamento la e por NOME)
+var CAIXA_ALTA = ['nome_completo', 'nome_abreviado', 'area', 'unidade', 'supervisor', 'supervisor_direto'];
 
-function msg(t, err) {
-  var m = document.getElementById('msg');
-  m.textContent = t;
-  m.style.color = err ? '#c0392b' : '#1a7a4a';
+// ── helpers de texto/validacao ──
+function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
+function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function dataValida(v) {
+  var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v || '');
+  if (!m) return false;
+  var d = +m[1], mo = +m[2], a = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || a < 1980 || a > new Date().getFullYear() + 1) return false;
+  var dt = new Date(a, mo - 1, d);
+  return dt.getDate() === d && dt.getMonth() === mo - 1 && dt.getFullYear() === a;
+}
+function emailValido(v) { return !v || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+function fmtStamp(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d)) return '';
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+function toast(t, tipo) {
+  var box = document.getElementById('toast');
+  var el = document.createElement('div');
+  el.className = 'toast ' + (tipo || '');
+  el.textContent = t;
+  box.appendChild(el);
+  setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, tipo === 'err' ? 7000 : 4000);
+}
+function msg(t, err) { if (t) toast(t, err ? 'err' : 'ok'); }
+function loading(on) { document.getElementById('loading').classList.toggle('on', !!on); }
+
+// ════════════ ACESSO ════════════
 // O login (e-mail + senha, contas do Supabase Auth) e o bloqueio PRINCIPAL da tela:
-// sem sessao valida o overlay nao sai e os dados nem chegam a ser carregados. Quem entra
-// ja entra podendo editar -- a antiga senha unica de visualizacao foi aposentada.
-// A sessao fica no localStorage do navegador, entao F5 nao pede senha de novo.
+// sem sessao valida o overlay nao sai e os dados nem chegam a ser carregados.
+// O QUE cada um pode editar vem de public.app_perfis (papel admin/supervisor/leitura).
+// Isto aqui e so a cara: quem manda de verdade e o RLS -- as policies promotores_ins/upd
+// chamam pode_editar_gestao(), entao um F12 esperto nao vira permissao.
 async function initAuth() {
   if (!SB) { document.getElementById('login-error').textContent = 'Supabase não configurado — avise o administrador.'; return; }
+  SB.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') abrirLogin(); });
   var s = await SB.auth.getSession();
   var user = s && s.data && s.data.session ? s.data.session.user : null;
   if (user) entrar(user); else abrirLogin();
@@ -236,11 +309,13 @@ function abrirLogin() {
   document.getElementById('login-overlay').classList.remove('hidden');
   setTimeout(function () { var e = document.getElementById('login-email'); if (e) e.focus(); }, 30);
 }
-function entrar(user) {
+async function entrar(user) {
   setAuth(user);
   document.getElementById('login-overlay').classList.add('hidden');
   document.getElementById('login-error').textContent = '';
   document.getElementById('login-input').value = '';
+  await loadPerfil();
+  pintaPerfil();
   if (!window._loaded) loadData();
 }
 function setAuth(user) {
@@ -251,6 +326,34 @@ function setAuth(user) {
   st.style.color = user ? '#1a7a4a' : '#c0392b';
   document.getElementById('logoutBtn').style.display = user ? '' : 'none';
 }
+async function loadPerfil() {
+  window._perfil = { papel: 'leitura', gestao: '' };
+  try {
+    var r = await SB.from('app_perfis').select('papel,gestao').limit(1);
+    if (!r.error && r.data && r.data.length) {
+      window._perfil = { papel: r.data[0].papel || 'leitura', gestao: r.data[0].gestao || '' };
+    }
+  } catch (e) { /* sem perfil = leitura */ }
+}
+function pintaPerfil() {
+  var p = window._perfil, el = document.getElementById('perfilPill'), h = '';
+  if (p.papel === 'admin') h = '<span class="pill pill-admin">★ Administrador — edita todo o cadastro</span>';
+  else if (p.papel === 'supervisor') h = '<span class="pill pill-sup">✎ Supervisor — edita a gestão ' + esc(p.gestao || '(sem gestão)') + '</span>';
+  else h = '<span class="pill pill-ler">👁 Somente consulta — fale com o administrador para editar</span>';
+  el.innerHTML = h;
+  document.getElementById('btnNovo').style.display = podeCriar() ? '' : 'none';
+  var bx = document.getElementById('btnExport'), e = escopoExport();
+  bx.style.display = e.rows === null ? 'none' : '';
+  bx.title = 'Baixa a base completa do seu acesso: ' + e.rotulo + ' (não segue os filtros da tela)';
+}
+function podeEditar(gestao) {
+  var p = window._perfil || {};
+  if (p.papel === 'admin') return true;
+  if (p.papel === 'supervisor') return !!p.gestao && norm(p.gestao).toUpperCase() === norm(gestao).toUpperCase();
+  return false;
+}
+function podeCriar() { var p = window._perfil || {}; return p.papel === 'admin' || (p.papel === 'supervisor' && !!p.gestao); }
+
 async function checkLogin() {
   var btn = document.getElementById('login-btn'), err = document.getElementById('login-error');
   if (!SB) { err.textContent = 'Supabase não configurado — avise o administrador.'; return; }
@@ -271,37 +374,63 @@ async function checkLogin() {
 }
 async function doLogout() {
   if (SB) await SB.auth.signOut();
-  window._rows = []; window._loaded = false;
+  window._rows = []; window._pessoas = []; window._loaded = false;
+  window._perfil = { papel: 'leitura', gestao: '' };
   setAuth(null);
-  renderKpis(); render(); msg('', false);
+  renderKpis(); render();
   abrirLogin();
 }
 
-// public.promotores: uma pessoa pode aparecer em mais de uma linha (alias historico de nome_gup).
-// A tela edita por pessoa (chave = nome_abreviado) -> ao salvar, update() com .eq('nome_abreviado',
-// abrev) atualiza TODAS as linhas daquela pessoa de uma vez. Deletar = soft delete (status_promotor).
+// ════════════ DADOS ════════════
+// public.promotores tem linhas de ALIAS: a mesma pessoa aparece 2x com grafias
+// diferentes de nome_gup (ex.: "Alan Leal" e "Kelber Leal"). A tela mostra 1 linha por
+// PESSOA (chave = nome completo + nome abreviado) e guarda os ids do grupo, entao o
+// Salvar escreve com .in('id', ids) -- e nao mais em "todo mundo que tem o mesmo nome
+// abreviado", que misturava gente diferente (ADMINISTRATIVO eram 9 linhas de 6 pessoas).
+function chavePessoa(row) {
+  var nc = norm(row.nome_completo).toUpperCase();
+  if (!nc) return '#' + row.id;                       // sem nome completo: linha isolada
+  return nc + '|' + norm(row.nome_abreviado).toUpperCase();
+}
 async function loadData() {
   if (!SB) { msg('Supabase não configurado.', true); return; }
+  loading(true);
   var r = await SB.from('promotores')
-    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,horario_entrada,horario_saida')
+    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,email,horario_entrada,horario_saida,updated_at,updated_by')
     .order('nome_completo');
+  loading(false);
   if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
-  var seen = {}, rows = [];
-  (r.data || []).forEach(function (row) {
-    var ab = row.nome_abreviado;
-    if (!ab || seen[ab]) return;
-    seen[ab] = true;
-    rows.push({
-      id: row.id, nome_abreviado: ab, nome_gup: row.nome_gup || '', nome_completo: row.nome_completo || '',
-      area: row.area || '', unidade: row.unidade || '', supervisor: row.supervisor || '',
-      supervisor_direto: row.supervisor_direto || '', gestao: row.gestao || '', dt_admissao: row.dt_admissao || '',
-      status: row.status_promotor || 'ATIVO', organizacao: row.organizacao || '',
-      horario_entrada: (row.horario_entrada || '').slice(0, 5), horario_saida: (row.horario_saida || '').slice(0, 5)
-    });
+  window._rows = r.data || [];
+
+  var mapa = {}, ordem = [];
+  window._rows.forEach(function (row) {
+    var k = chavePessoa(row);
+    if (!mapa[k]) {
+      mapa[k] = {
+        chave: k, ids: [], gups: [],
+        nome_completo: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
+        supervisor_direto: '', gestao: '', dt_admissao: '', status: '', organizacao: '',
+        email: '', horario_entrada: '', horario_saida: '', updated_at: '', updated_by: ''
+      };
+      ordem.push(k);
+    }
+    var p = mapa[k];
+    p.ids.push(row.id);
+    if (norm(row.nome_gup)) p.gups.push(norm(row.nome_gup));
+    // primeiro valor nao-vazio vence (linhas de alias costumam ter buracos)
+    [['nome_completo', 'nome_completo'], ['nome_abreviado', 'nome_abreviado'], ['area', 'area'],
+     ['unidade', 'unidade'], ['supervisor', 'supervisor'], ['supervisor_direto', 'supervisor_direto'],
+     ['gestao', 'gestao'], ['dt_admissao', 'dt_admissao'], ['organizacao', 'organizacao'],
+     ['email', 'email'], ['updated_by', 'updated_by']
+    ].forEach(function (par) { if (!p[par[0]] && row[par[1]]) p[par[0]] = row[par[1]]; });
+    if (!p.status && row.status_promotor) p.status = row.status_promotor;
+    if (!p.horario_entrada && row.horario_entrada) p.horario_entrada = String(row.horario_entrada).slice(0, 5);
+    if (!p.horario_saida && row.horario_saida) p.horario_saida = String(row.horario_saida).slice(0, 5);
+    if (row.updated_at && row.updated_at > p.updated_at) { p.updated_at = row.updated_at; p.updated_by = row.updated_by || p.updated_by; }
   });
-  window._rows = rows;
+  window._pessoas = ordem.map(function (k) { var p = mapa[k]; if (!p.status) p.status = 'ATIVO'; return p; });
   window._loaded = true;
-  fillSupervisorFilter(rows);
+  fillSupervisorFilter(window._pessoas);
   renderKpis();
   render();
 }
@@ -317,16 +446,12 @@ function fillSupervisorFilter(rows) {
   if (names.indexOf(current) >= 0 || current === 'TODOS') sel.value = current;
 }
 
-// KPIs de ATIVOS por gestao -- contam a base inteira (nao seguem os filtros da tabela).
-// _rows ja vem deduplicado por nome_abreviado, entao a contagem e de PESSOAS, nao de linhas
-// (o cadastro tem alias historico de nome_gup que repete a mesma pessoa).
-// Cada gestao abre em TIME PRÓPRIO (interno) x TIME TERCEIROS; quem estiver com organizacao
-// em branco cai num terceiro balde "sem organização", que so aparece se tiver alguem nele
-// (assim o total do card sempre bate com a soma das pilhas).
+// KPIs de ATIVOS por gestao -- contam a base inteira (nao seguem os filtros da tabela)
+// e por PESSOA, nao por linha (o cadastro repete a pessoa nas linhas de alias).
 function renderKpis() {
   var n = { FABIO: 0, JOSY: 0 };
   var org = { FABIO: { proprio: 0, terceiros: 0, sem: 0 }, JOSY: { proprio: 0, terceiros: 0, sem: 0 } };
-  window._rows.forEach(function (r) {
+  window._pessoas.forEach(function (r) {
     if ((r.status || 'ATIVO').toUpperCase() !== 'ATIVO') return;
     var g = (r.gestao || '').toUpperCase();
     if (n[g] === undefined) return;
@@ -385,78 +510,307 @@ function updateHeaderArrows() {
     el.textContent = window._sort.col === col ? (window._sort.dir === 1 ? ' ▲' : ' ▼') : '';
   });
 }
-
-function render() {
+function badgeClass(st) {
+  if (st === 'ATIVO') return 'b-ativo';
+  if (st === 'FÉRIAS' || st === 'LICENÇA' || st === 'AFASTADO') return 'b-pausa';
+  if (st === 'ADMINISTRATIVO') return 'b-adm';
+  return 'b-fora';
+}
+// o que falta para os OUTROS paineis (SLA usa horario; Conversao usa admissao; Times usa organizacao)
+function faltantes(r) {
+  var f = [];
+  if (!r.dt_admissao) f.push('admissão');
+  if (!r.organizacao) f.push('organização');
+  if (!r.horario_entrada || !r.horario_saida) f.push('horário');
+  if (!r.email) f.push('e-mail');
+  return f;
+}
+function filtrados() {
   var gt = document.getElementById('fGestao').value;
   var st = document.getElementById('fStatus').value;
   var sup = document.getElementById('fSupervisor').value;
-  var q = (document.getElementById('fSearch').value || '').toLowerCase();
-  var rows = window._rows.filter(function (r) {
+  var q = norm(document.getElementById('fSearch').value).toLowerCase();
+  return window._pessoas.filter(function (r) {
     if (gt !== 'TODOS' && (r.gestao || '').toUpperCase() !== gt) return false;
     if (st !== 'TODOS' && (r.status || 'ATIVO').toUpperCase() !== st) return false;
     if (sup !== 'TODOS' && r.supervisor !== sup) return false;
     if (q) {
-      var blob = (r.nome_completo + ' ' + r.nome_gup + ' ' + r.nome_abreviado + ' ' + r.supervisor).toLowerCase();
+      var blob = (r.nome_completo + ' ' + r.gups.join(' ') + ' ' + r.nome_abreviado + ' '
+        + r.supervisor + ' ' + r.email).toLowerCase();
       if (blob.indexOf(q) < 0) return false;
     }
     return true;
   });
-  rows = sortRows(rows);
+}
+function render() {
+  var rows = sortRows(filtrados());
   document.getElementById('count').textContent = rows.length + ' promotor(es)';
   var body = '';
   rows.forEach(function (r) {
     var stU = (r.status || 'ATIVO').toUpperCase(), ativo = stU === 'ATIVO';
-    body += '<tr onclick="openModal(\'' + esc(r.nome_abreviado).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
-      + '<td>' + esc(r.nome_completo) + '</td>'
+    var falta = ativo ? faltantes(r) : [];
+    var alias = r.ids.length > 1 ? '<span class="alias-tag" title="' + esc(r.gups.join(' / ')) + '">' + r.ids.length + ' grafias GUP</span>' : '';
+    body += '<tr onclick="openModal(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
+      + '<td>' + esc(r.nome_completo || '(sem nome completo)') + alias
+      + (falta.length ? '<span class="warn-inc" title="Cadastro incompleto: falta ' + esc(falta.join(', ')) + '">⚠</span>' : '') + '</td>'
       + '<td>' + esc(r.nome_abreviado) + '</td>'
+      + '<td class="c-mail" title="' + esc(r.email) + '">' + esc(r.email) + '</td>'
       + '<td>' + esc(r.supervisor) + '</td>'
       + '<td>' + esc(r.gestao) + '</td>'
-      + '<td>' + esc(r.organizacao) + '</td>'
+      + '<td class="col-opt">' + esc(r.organizacao) + '</td>'
       + '<td>' + esc(r.dt_admissao) + '</td>'
-      + '<td><span class="badge ' + (ativo ? 'b-ativo' : 'b-outro') + '">' + esc(stU) + '</span></td>'
+      + '<td><span class="badge ' + badgeClass(stU) + '">' + esc(stU) + '</span></td>'
+      + '<td class="col-opt" title="' + esc(r.updated_by || '') + '">' + esc(fmtStamp(r.updated_at)) + '</td>'
       + '</tr>';
   });
-  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="7" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
+  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="9" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
   updateHeaderArrows();
 }
-function esc(v) { return String(v == null ? '' : v).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
-// ── modal ──
-function openModal(abrev) {
-  var isNew = abrev == null;
+// ════════════ EXPORTAR .XLSX ════════════
+// O escopo do arquivo segue o PERFIL, nao os filtros da tela: admin leva a base
+// inteira, supervisor leva a gestao dele. "Somente consulta" nao exporta.
+var EXPORT_COLS = [
+  { campo: 'nome_completo', titulo: 'NOME COMPLETO', largura: 34 },
+  { campo: 'nome_abreviado', titulo: 'NOME ABREVIADO', largura: 24 },
+  { campo: 'gups', titulo: 'NOME GUP', largura: 26 },
+  { campo: 'email', titulo: 'E-MAIL', largura: 30 },
+  { campo: 'area', titulo: 'ÁREA', largura: 16 },
+  { campo: 'unidade', titulo: 'UNIDADE', largura: 18 },
+  { campo: 'supervisor', titulo: 'SUPERVISOR', largura: 20 },
+  { campo: 'supervisor_direto', titulo: 'SUPERVISOR DIRETO', largura: 20 },
+  { campo: 'gestao', titulo: 'GESTÃO', largura: 15 },
+  { campo: 'organizacao', titulo: 'ORGANIZAÇÃO', largura: 16 },
+  { campo: 'dt_admissao', titulo: 'DT ADMISSÃO', largura: 13 },
+  { campo: 'status', titulo: 'STATUS', largura: 15 },
+  { campo: 'horario_entrada', titulo: 'HORÁRIO ENTRADA', largura: 15 },
+  { campo: 'horario_saida', titulo: 'HORÁRIO SAÍDA', largura: 15 },
+  { campo: 'updated_at', titulo: 'ATUALIZADO EM', largura: 17 },
+  { campo: 'updated_by', titulo: 'ATUALIZADO POR', largura: 28 }
+];
+function escopoExport() {
+  var p = window._perfil || {};
+  if (p.papel === 'admin') return { rows: window._pessoas.slice(), rotulo: 'todas as gestões', arq: 'TODAS' };
+  if (p.papel === 'supervisor' && p.gestao) {
+    var g = norm(p.gestao).toUpperCase();
+    return {
+      rows: window._pessoas.filter(function (r) { return norm(r.gestao).toUpperCase() === g; }),
+      rotulo: 'gestão ' + g, arq: g
+    };
+  }
+  return { rows: null, rotulo: '', arq: '' };   // leitura: sem exportacao
+}
+
+// ── gerador de .xlsx sem biblioteca ──
+// Um .xlsx e um ZIP de XMLs. O ZIP aqui vai SEM compressao (metodo 0), que e valido
+// e dispensa qualquer dependencia -- nada de CDN novo no caminho critico do painel.
+var _CRCT = (function () {
+  var t = new Uint32Array(256);
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function _crc32(buf) {
+  var c = 0xFFFFFFFF;
+  for (var i = 0; i < buf.length; i++) c = _CRCT[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function _u16(v) { return [v & 255, (v >>> 8) & 255]; }
+function _u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+function _zip(arquivos) {
+  var enc = new TextEncoder(), partes = [], central = [], off = 0;
+  arquivos.forEach(function (f) {
+    var nome = enc.encode(f.nome), dados = enc.encode(f.texto);
+    var crc = _crc32(dados), n = dados.length;
+    var lh = [].concat(_u32(0x04034b50), _u16(20), _u16(0x0800), _u16(0), _u16(0), _u16(0),
+      _u32(crc), _u32(n), _u32(n), _u16(nome.length), _u16(0));
+    partes.push(new Uint8Array(lh), nome, dados);
+    central.push({ nome: nome, crc: crc, n: n, off: off });
+    off += lh.length + nome.length + n;
+  });
+  var cd = [], cdIni = off;
+  central.forEach(function (c) {
+    var h = [].concat(_u32(0x02014b50), _u16(20), _u16(20), _u16(0x0800), _u16(0), _u16(0), _u16(0),
+      _u32(c.crc), _u32(c.n), _u32(c.n), _u16(c.nome.length), _u16(0), _u16(0),
+      _u16(0), _u16(0), _u32(0), _u32(c.off));
+    cd.push(new Uint8Array(h), c.nome);
+    off += h.length + c.nome.length;
+  });
+  var eocd = new Uint8Array([].concat(_u32(0x06054b50), _u16(0), _u16(0),
+    _u16(central.length), _u16(central.length), _u32(off - cdIni), _u32(cdIni), _u16(0)));
+  return new Blob(partes.concat(cd, [eocd]),
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function _xmlEsc(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+}
+function _colLetra(i) { var s = '', n = i + 1; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; }
+function _sheetXml(cols, linhas) {
+  var ref = 'A1:' + _colLetra(cols.length - 1) + (linhas.length + 1);
+  var x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + '<dimension ref="' + ref + '"/>'
+    + '<sheetViews><sheetView tabSelected="1" workbookViewId="0">'
+    + '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+    + '<sheetFormatPr defaultRowHeight="15"/><cols>'
+    + cols.map(function (c, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + c.largura + '" customWidth="1"/>'; }).join('')
+    + '</cols><sheetData><row r="1">'
+    + cols.map(function (c, i) { return '<c r="' + _colLetra(i) + '1" s="1" t="inlineStr"><is><t>' + _xmlEsc(c.titulo) + '</t></is></c>'; }).join('')
+    + '</row>';
+  linhas.forEach(function (l, li) {
+    var r = li + 2, cel = '';
+    l.forEach(function (v, i) {
+      if (v === '' || v == null) return;   // celula vazia: nem escreve
+      cel += '<c r="' + _colLetra(i) + r + '" t="inlineStr"><is><t xml:space="preserve">' + _xmlEsc(v) + '</t></is></c>';
+    });
+    x += '<row r="' + r + '">' + cel + '</row>';
+  });
+  return x + '</sheetData><autoFilter ref="' + ref + '"/></worksheet>';
+}
+function exportXlsx() {
+  var e = escopoExport();
+  if (e.rows === null) { msg('Seu acesso é somente consulta — sem exportação.', true); return; }
+  if (!e.rows.length) { msg('Não há promotores no seu escopo para exportar.', true); return; }
+  var linhas = sortRows(e.rows).map(function (r) {
+    return EXPORT_COLS.map(function (c) {
+      if (c.campo === 'gups') return r.gups.join(' / ');
+      if (c.campo === 'updated_at') return fmtStamp(r.updated_at);
+      return r[c.campo] || '';
+    });
+  });
+  var NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  var arquivos = [
+    { nome: '[Content_Types].xml', texto: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+      + '</Types>' },
+    { nome: '_rels/.rels', texto: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="' + NS + '/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+    { nome: 'xl/workbook.xml', texto: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="' + NS + '">'
+      + '<sheets><sheet name="Promotores" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+    { nome: 'xl/_rels/workbook.xml.rels', texto: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="' + NS + '/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId2" Type="' + NS + '/styles" Target="styles.xml"/></Relationships>' },
+    { nome: 'xl/styles.xml', texto: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'
+      + '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>'
+      + '<fills count="3"><fill><patternFill patternType="none"/></fill>'
+      + '<fill><patternFill patternType="gray125"/></fill>'
+      + '<fill><patternFill patternType="solid"><fgColor rgb="FF003F7F"/><bgColor indexed="64"/></patternFill></fill></fills>'
+      + '<borders count="1"><border/></borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>'
+      + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+      + '</styleSheet>' },
+    { nome: 'xl/worksheets/sheet1.xml', texto: _sheetXml(EXPORT_COLS, linhas) }
+  ];
+  var hoje = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var nome = 'cadastro_promotores_' + e.arq + '_' + hoje.getFullYear() + p2(hoje.getMonth() + 1) + p2(hoje.getDate()) + '.xlsx';
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(_zip(arquivos));
+  a.download = nome;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  msg(linhas.length + ' promotor(es) exportado(s) — ' + e.rotulo + '.', false);
+}
+
+// ════════════ MODAL ════════════
+function limpaErros() {
+  CAMPOS.forEach(function (f) {
+    var e = document.getElementById('e_' + f), i = document.getElementById('m_' + f);
+    if (e) e.textContent = '';
+    if (i) i.classList.remove('bad');
+  });
+}
+function setErr(campo, txt) {
+  var e = document.getElementById('e_' + campo), i = document.getElementById('m_' + campo);
+  if (e) e.textContent = txt;
+  if (i) i.classList.add('bad');
+}
+function openModal(chave) {
+  var isNew = chave == null;
   var r = isNew
-    ? { nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
-        supervisor_direto: '', gestao: 'FABIO', dt_admissao: '', organizacao: '', status: 'ATIVO',
-        horario_entrada: '', horario_saida: '' }
-    : window._rows.filter(function (x) { return x.nome_abreviado === abrev; })[0];
+    ? { ids: [], gups: [], nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
+        supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? window._perfil.gestao : 'FABIO'),
+        dt_admissao: '', organizacao: '', status: 'ATIVO', email: '', horario_entrada: '', horario_saida: '',
+        updated_at: '', updated_by: '' }
+    : window._pessoas.filter(function (x) { return x.chave === chave; })[0];
   if (!r) return;
-  window._modalAbrev = isNew ? null : abrev;
+  window._modalKey = isNew ? null : chave;
+  limpaErros();
 
-  document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : r.nome_completo;
-  var ed = window._auth;
-  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
+  var ed = isNew ? podeCriar() : podeEditar(r.gestao);
+  document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : (r.nome_completo || r.nome_abreviado);
+
+  ['nome_completo', 'nome_abreviado', 'email', 'area', 'unidade', 'supervisor', 'supervisor_direto',
+   'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
     var el = document.getElementById('m_' + f);
     el.value = r[f] || '';
     el.disabled = !ed;
   });
+
+  // nome GUP: quando a pessoa tem 2+ linhas de alias, editar aqui apagaria uma das grafias
+  var gup = document.getElementById('m_nome_gup'), hint = document.getElementById('h_nome_gup');
+  var multi = r.ids.length > 1;
+  gup.value = multi ? r.gups.join(' / ') : (r.gups[0] || '');
+  gup.disabled = !ed || multi;
+  hint.textContent = multi
+    ? 'Esta pessoa tem ' + r.ids.length + ' grafias de nome GUP no cadastro (usadas para casar os leads). Alterar por aqui apagaria uma delas — peça ao administrador.'
+    : '';
+
   var gestSel = document.getElementById('m_gestao');
-  gestSel.innerHTML = GESTOES.map(function (g) { return '<option ' + ((r.gestao || '').toUpperCase() === g ? 'selected' : '') + '>' + g + '</option>'; }).join('');
-  gestSel.disabled = !ed;
+  var gestOpts = GESTOES.slice();
+  if (r.gestao && gestOpts.indexOf((r.gestao || '').toUpperCase()) < 0) gestOpts.push((r.gestao || '').toUpperCase());
+  gestSel.innerHTML = gestOpts.map(function (g) { return '<option ' + ((r.gestao || '').toUpperCase() === g ? 'selected' : '') + '>' + g + '</option>'; }).join('');
+  // supervisor nao muda gente de gestao (o RLS recusaria de qualquer jeito)
+  gestSel.disabled = !ed || window._perfil.papel === 'supervisor';
+
+  // status fora da lista viraria ATIVO sem avisar -> a opcao atual entra na lista
   var statSel = document.getElementById('m_status');
-  statSel.innerHTML = STATUSES.map(function (s) { return '<option ' + ((r.status || 'ATIVO').toUpperCase() === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
+  var stU = (r.status || 'ATIVO').toUpperCase();
+  var stOpts = STATUSES.slice();
+  if (stOpts.indexOf(stU) < 0) stOpts.push(stU);
+  statSel.innerHTML = stOpts.map(function (s) { return '<option ' + (stU === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
   statSel.disabled = !ed;
+
   var orgSel = document.getElementById('m_organizacao');
   var orgVal = (r.organizacao || '').toUpperCase();
   orgSel.innerHTML = '<option value=""' + (orgVal ? '' : ' selected') + '>(não informado)</option>'
     + ORGANIZACOES.map(function (o) { return '<option ' + (orgVal === o ? 'selected' : '') + '>' + o + '</option>'; }).join('');
   orgSel.disabled = !ed;
 
-  document.getElementById('lockmsg').style.display = ed ? 'none' : '';
+  document.getElementById('stamp').textContent = (!isNew && r.updated_at)
+    ? ('Última alteração em ' + fmtStamp(r.updated_at) + (r.updated_by ? ' por ' + r.updated_by : '')
+       + ' · ' + r.ids.length + ' linha(s) no cadastro')
+    : (isNew ? '' : 'Sem registro de alteração pelo painel.');
+
+  var lock = document.getElementById('lockmsg');
+  if (ed) { lock.style.display = 'none'; }
+  else {
+    lock.style.display = '';
+    lock.textContent = window._perfil.papel === 'supervisor'
+      ? '🔒 Você edita apenas a gestão ' + (window._perfil.gestao || '') + '. Este promotor é da gestão ' + (r.gestao || '—') + '.'
+      : '🔒 Seu acesso é somente consulta. Peça ao administrador para liberar a edição.';
+  }
+
   var footer = document.getElementById('modalFooter');
   if (ed) {
     footer.innerHTML = (isNew ? '' : '<button class="btn btn-grey" onclick="deactivateModal()">Desativar</button>')
       + '<button class="btn btn-blue" onclick="closeModal()">Cancelar</button>'
-      + '<button class="btn btn-green" onclick="saveModal(' + (isNew ? 'true' : 'false') + ')">Salvar</button>';
+      + '<button class="btn btn-green" id="btnSalvar" onclick="saveModal(' + (isNew ? 'true' : 'false') + ')">Salvar</button>';
   } else {
     footer.innerHTML = '<button class="btn btn-blue" onclick="closeModal()">Fechar</button>';
   }
@@ -464,57 +818,125 @@ function openModal(abrev) {
 }
 function closeModal() {
   document.getElementById('overlay').classList.remove('open');
-  window._modalAbrev = null;
+  window._modalKey = null;
+}
+
+function coletaModal() {
+  var raw = {};
+  CAMPOS.forEach(function (f) { raw[f] = norm((document.getElementById('m_' + f) || {}).value); });
+  CAIXA_ALTA.forEach(function (f) { raw[f] = raw[f].toUpperCase(); });
+  raw.email = raw.email.toLowerCase();
+  return raw;
+}
+function valida(raw, isNew) {
+  limpaErros();
+  var ok = true;
+  function ex(c, t) { setErr(c, t); ok = false; }
+  if (!raw.nome_completo) ex('nome_completo', 'Obrigatório.');
+  if (!raw.nome_abreviado) ex('nome_abreviado', 'Obrigatório.');
+  if (!raw.gestao) ex('gestao', 'Obrigatório.');
+  if (!raw.status) ex('status', 'Obrigatório.');
+  if (raw.dt_admissao && !dataValida(raw.dt_admissao)) ex('dt_admissao', 'Use DD/MM/AAAA (data válida).');
+  if (!emailValido(raw.email)) ex('email', 'E-mail inválido.');
+  if (raw.email) {
+    var dono = window._pessoas.filter(function (p) {
+      return (p.email || '').toLowerCase() === raw.email && p.chave !== window._modalKey;
+    })[0];
+    if (dono) ex('email', 'Já usado por ' + (dono.nome_completo || dono.nome_abreviado) + '.');
+  }
+  if (isNew) {
+    [['area', 'Área'], ['unidade', 'Unidade'], ['supervisor', 'Supervisor'], ['supervisor_direto', 'Supervisor Direto'],
+     ['dt_admissao', 'Admissão'], ['organizacao', 'Organização'], ['horario_entrada', 'Horário de Entrada'],
+     ['horario_saida', 'Horário de Saída']].forEach(function (par) {
+      if (!raw[par[0]]) ex(par[0], 'Obrigatório para um cadastro novo.');
+    });
+    var jaExiste = window._pessoas.filter(function (p) {
+      return norm(p.nome_completo).toUpperCase() === raw.nome_completo;
+    })[0];
+    if (jaExiste) ex('nome_completo', 'Já existe no cadastro (' + (jaExiste.status || '') + '). Edite o registro dele.');
+  }
+  if (!ok) msg('Confira os campos destacados.', true);
+  return ok;
 }
 
 async function saveModal(isNew) {
   if (!SB || !window._auth) { msg('Entre para editar.', true); return; }
-  var raw = {};
-  ['nome_completo', 'nome_abreviado', 'nome_gup', 'area', 'unidade', 'supervisor', 'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status', 'horario_entrada', 'horario_saida']
-    .forEach(function (f) { raw[f] = (document.getElementById('m_' + f).value || '').trim(); });
-  if (!raw.nome_completo) { msg('Nome Completo é obrigatório.', true); return; }
-  if (!raw.nome_abreviado) { msg('Nome Abreviado é obrigatório.', true); return; }
-  if (isNew) {
-    var required = [
-      ['area', 'Área'], ['unidade', 'Unidade'], ['supervisor_direto', 'Supervisor Direto'],
-      ['supervisor', 'Supervisor'], ['gestao', 'Gestão'], ['dt_admissao', 'Admissão'],
-      ['organizacao', 'Organização'], ['status', 'Status'],
-      ['horario_entrada', 'Horário de Entrada'], ['horario_saida', 'Horário de Saída']
-    ];
-    for (var i = 0; i < required.length; i++) {
-      if (!raw[required[i][0]]) { msg(required[i][1] + ' é obrigatório.', true); return; }
-    }
-  }
+  var pessoa = isNew ? null : window._pessoas.filter(function (x) { return x.chave === window._modalKey; })[0];
+  if (!isNew && !pessoa) { msg('Registro não encontrado — recarregue a página.', true); return; }
+  if (!isNew && !podeEditar(pessoa.gestao)) { msg('Você não tem permissão para editar este promotor.', true); return; }
+
+  var raw = coletaModal();
+  if (window._perfil.papel === 'supervisor') raw.gestao = (window._perfil.gestao || '').toUpperCase();
+  if (!valida(raw, isNew)) return;
+
+  var btn = document.getElementById('btnSalvar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  // updated_by/updated_at nao vao daqui: quem carimba e o trigger no banco (trg_promotores_stamp).
+  // equipe tambem nao: e campo so-SLA, derivado por _regerar_base_promotores.py.
   var o = {
-    nome_completo: raw.nome_completo, nome_gup: raw.nome_gup || null,
-    area: raw.area || null, unidade: raw.unidade || null, supervisor: raw.supervisor || null,
-    supervisor_direto: raw.supervisor_direto || null, gestao: (raw.gestao || '').toUpperCase(),
-    dt_admissao: raw.dt_admissao || null, organizacao: raw.organizacao || null,
-    status_promotor: (raw.status || 'ATIVO').toUpperCase(), updated_by: window._user,
-    horario_entrada: raw.horario_entrada || null, horario_saida: raw.horario_saida || null
+    nome_completo: raw.nome_completo, area: raw.area || null, unidade: raw.unidade || null,
+    supervisor: raw.supervisor || null, supervisor_direto: raw.supervisor_direto || null,
+    gestao: raw.gestao.toUpperCase(), dt_admissao: raw.dt_admissao || null,
+    organizacao: raw.organizacao || null, status_promotor: raw.status.toUpperCase(),
+    email: raw.email || null, horario_entrada: raw.horario_entrada || null,
+    horario_saida: raw.horario_saida || null
   };
+
   var r;
   if (isNew) {
-    o.nome_abreviado = raw.nome_abreviado.toUpperCase();
+    o.nome_abreviado = raw.nome_abreviado;
+    o.nome_gup = raw.nome_gup || null;
     r = await SB.from('promotores').insert(o).select();
   } else {
-    r = await SB.from('promotores').update(o).eq('nome_abreviado', window._modalAbrev).select();
+    o.nome_abreviado = raw.nome_abreviado;
+    if (pessoa.ids.length === 1) o.nome_gup = raw.nome_gup || null;  // alias so muda pelo admin/banco
+    r = await SB.from('promotores').update(o).in('id', pessoa.ids).select();
   }
-  if (r.error) { msg('Erro ao salvar: ' + r.error.message, true); return; }
-  msg('Salvo: ' + raw.nome_completo + ' (' + o.status_promotor + ').', false);
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+
+  if (r.error) {
+    msg(/row-level security|violates/i.test(r.error.message || '')
+      ? 'O banco recusou: você não tem permissão para gravar nesta gestão.'
+      : ('Erro ao salvar: ' + r.error.message), true);
+    return;
+  }
+  // RLS que barra UPDATE nao vira erro: volta 0 linhas. Sem esta checagem o app diria "salvo".
+  if (!r.data || !r.data.length) {
+    msg('Nada foi gravado — o banco não liberou este registro para o seu perfil.', true);
+    return;
+  }
+  if (!isNew && r.data.length !== pessoa.ids.length) {
+    msg('Atenção: ' + r.data.length + ' de ' + pessoa.ids.length + ' linhas gravadas.', true);
+  } else {
+    msg('Salvo: ' + raw.nome_completo + ' (' + o.status_promotor + ').', false);
+  }
   closeModal();
   await loadData();
 }
 async function deactivateModal() {
+  var nome = norm(document.getElementById('m_nome_completo').value) || 'este promotor';
+  if (!window.confirm('Desativar ' + nome + '?\n\nO status vai para DESLIGADO. O registro continua no cadastro e pode ser reativado.')) return;
   document.getElementById('m_status').value = 'DESLIGADO';
   await saveModal(false);
 }
+
+// ── mascara de data no campo Admissao ──
+document.getElementById('m_dt_admissao').addEventListener('input', function () {
+  var v = this.value.replace(/\D/g, '').slice(0, 8), out = v;
+  if (v.length > 4) out = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+  else if (v.length > 2) out = v.slice(0, 2) + '/' + v.slice(2);
+  this.value = out;
+});
 
 // ── Enter em qualquer um dos dois campos envia o login ──
 ['login-email', 'login-input'].forEach(function (id) {
   document.getElementById(id).addEventListener('keydown', function (e) {
     if (e.key === 'Enter') checkLogin();
   });
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.getElementById('overlay').classList.contains('open')) closeModal();
 });
 
 window.addEventListener('load', function () { initAuth(); });
