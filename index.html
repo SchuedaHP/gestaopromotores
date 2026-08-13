@@ -875,7 +875,9 @@ function openModal(chave) {
   // tags do cabecalho: leitura rapida de quem e a pessoa, sem descer os olhos ate a ficha
   var tags = [];
   if (!isNew) {
-    if (r.nome_abreviado) tags.push(esc(r.nome_abreviado));
+    // linhas institucionais (ADMINISTRATIVO, ADMINISTR / HAPVIDA...) repetem o mesmo texto
+    // em todo campo -- sem isto o cabecalho mostrava a mesma palavra tres vezes
+    if (r.nome_abreviado && norm(r.nome_abreviado).toUpperCase() !== norm(r.nome_completo).toUpperCase()) tags.push(esc(r.nome_abreviado));
     if (r.gestao) tags.push('Gestão ' + esc(r.gestao));
     tags.push(esc((r.status || 'ATIVO').toUpperCase()));
     if (r.ids.length > 1) tags.push(r.ids.length + ' grafias GUP');
