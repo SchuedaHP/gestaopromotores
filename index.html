@@ -73,11 +73,29 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 /* modal */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;padding:12px}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:10px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
-.modal-h{background:#003F7F;color:#fff;padding:14px 20px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:2}
-.modal-h b{font-size:1rem;flex:1}
-.modal-h .x{cursor:pointer;font-size:1.2rem;background:none;border:none;color:#fff}
-.modal-b{padding:18px 20px}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:1180px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal-h{background:#003F7F;color:#fff;padding:13px 22px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.modal-h b{font-size:1.05rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal-h .x{cursor:pointer;font-size:1.3rem;background:none;border:none;color:#fff;line-height:1}
+.mh-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.mh-tag{font-size:.68rem;font-weight:700;letter-spacing:.03em;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:20px;padding:2px 10px}
+/* corpo: formulario a esquerda, ficha (so leitura) a direita */
+.modal-b{padding:18px 22px;overflow-y:auto;flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:0 26px;align-items:start}
+.sec+.sec{margin-top:14px}
+.sec-h{font-size:.71rem;font-weight:800;color:#0057A8;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #e6eef7;padding-bottom:5px;margin:0 0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px}
+.f-wide{grid-column:span 2}
+.ficha{background:#f6f9fc;border:1px solid #e3ecf5;border-radius:9px;padding:14px 15px}
+.ficha h4{font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0057A8;margin:0 0 10px}
+.ficha h4+h4{margin-top:16px}
+.fl{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:.8rem;padding:5px 0;border-bottom:1px dashed #e3ecf5}
+.fl:last-child{border-bottom:none}
+.fl>span{color:#69778a;flex:0 0 auto}
+.fl>b{color:#22303f;text-align:right;word-break:break-word;font-weight:700}
+.fl-nota{font-size:.76rem;color:#69778a;line-height:1.45}
+.fl-box{border-radius:7px;padding:9px 11px;font-size:.77rem;line-height:1.45;margin-top:4px}
+.fl-warn{background:#fdf7e7;border:1px solid #f0e2bd;color:#8a6d1c}
+.fl-ok{background:#eaf7f0;border:1px solid #c9e8d8;color:#1a7a4a}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:.75rem;color:#666;font-weight:700;margin-bottom:4px;text-transform:uppercase}
 .field label .req{color:#c0392b}
@@ -86,10 +104,8 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 .field input.bad,.field select.bad{border-color:#c0392b;background:#fdf3f2}
 .field .err{color:#c0392b;font-size:.74rem;min-height:14px;margin-top:3px}
 .field .hint{color:#7a8896;font-size:.72rem;margin-top:3px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
-.modal-f{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:0;background:#fff}
-.lockmsg{font-size:.8rem;color:#8a6d1c;background:#fdf7e7;border-top:1px solid #f0e2bd;padding:10px 20px}
-.stamp{font-size:.73rem;color:#8a94a0;padding:0 20px 12px}
+.modal-f{padding:13px 22px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;background:#fff;flex:0 0 auto;border-radius:0 0 10px 10px}
+.lockmsg{font-size:.8rem;color:#8a6d1c;background:#fdf7e7;border-top:1px solid #f0e2bd;padding:10px 22px;flex:0 0 auto}
 /* login overlay (e-mail + senha — bloqueio principal da tela) */
 #login-overlay{position:fixed;inset:0;background:#f0f4f8;display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
 #login-overlay.hidden{display:none}
@@ -100,8 +116,21 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 .login-box input{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:5px;font-size:.9rem;margin-bottom:12px}
 .login-box button{width:100%;padding:9px 12px;border:none;border-radius:5px;background:#0057A8;color:#fff;font-weight:700;cursor:pointer;font-size:.88rem}
 .login-error{color:#c0392b;font-size:.8rem;min-height:16px;margin-top:8px}
+/* o modal encolhe em degraus: ficha desce, 3 colunas viram 2 e depois 1 */
+@media (max-width:1080px){
+  .modal-b{grid-template-columns:minmax(0,1fr)}
+  .ficha{margin-top:16px}
+}
+@media (max-width:820px){
+  .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .f-wide{grid-column:span 2}
+}
+@media (max-width:560px){
+  .grid3{grid-template-columns:1fr}
+  .f-wide{grid-column:span 1}
+  .modal-b{padding:14px}
+}
 @media (max-width:900px){
-  .grid2{grid-template-columns:1fr}
   .col-opt{display:none}
   #count{margin-left:0}
   .ctrl select,.ctrl input{flex:1 1 140px}
@@ -209,28 +238,47 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-h">
-      <b id="modalTitle">Promotor</b>
-      <button class="x" onclick="closeModal()">✕</button>
+      <div style="flex:1;min-width:0">
+        <b id="modalTitle">Promotor</b>
+        <div class="mh-tags" id="modalTags"></div>
+      </div>
+      <button class="x" onclick="closeModal()" title="Fechar (Esc)">✕</button>
     </div>
     <div class="modal-b">
-      <div class="grid2">
-        <div class="field"><label>Nome Completo <span class="req">*</span></label><input id="m_nome_completo"><div class="err" id="e_nome_completo"></div></div>
-        <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"><div class="err" id="e_nome_abreviado"></div></div>
-        <div class="field"><label>Nome GUP</label><input id="m_nome_gup"><div class="err" id="e_nome_gup"></div><div class="hint" id="h_nome_gup"></div></div>
-        <div class="field"><label>E-mail</label><input id="m_email" type="email" placeholder="nome@hapvida.com.br"><div class="err" id="e_email"></div></div>
-        <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"><div class="err" id="e_area"></div></div>
-        <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"><div class="err" id="e_unidade"></div></div>
-        <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"><div class="err" id="e_supervisor"></div></div>
-        <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"><div class="err" id="e_supervisor_direto"></div></div>
-        <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select><div class="err" id="e_gestao"></div></div>
-        <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10"><div class="err" id="e_dt_admissao"></div></div>
-        <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select><div class="err" id="e_organizacao"></div></div>
-        <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select><div class="err" id="e_status"></div></div>
-        <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"><div class="err" id="e_horario_entrada"></div></div>
-        <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"><div class="err" id="e_horario_saida"></div></div>
+      <div>
+        <div class="sec">
+          <div class="sec-h">Identificação</div>
+          <div class="grid3">
+            <div class="field f-wide"><label>Nome Completo <span class="req">*</span></label><input id="m_nome_completo"><div class="err" id="e_nome_completo"></div></div>
+            <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"><div class="err" id="e_nome_abreviado"></div></div>
+            <div class="field f-wide"><label>E-mail</label><input id="m_email" type="email" placeholder="nome@hapvida.com.br"><div class="err" id="e_email"></div></div>
+            <div class="field"><label>Nome GUP</label><input id="m_nome_gup"><div class="err" id="e_nome_gup"></div><div class="hint" id="h_nome_gup"></div></div>
+          </div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Alocação</div>
+          <div class="grid3">
+            <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select><div class="err" id="e_gestao"></div></div>
+            <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"><div class="err" id="e_supervisor"></div></div>
+            <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"><div class="err" id="e_supervisor_direto"></div></div>
+            <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"><div class="err" id="e_area"></div></div>
+            <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"><div class="err" id="e_unidade"></div></div>
+            <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select><div class="err" id="e_organizacao"></div></div>
+          </div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Situação e jornada</div>
+          <div class="grid3">
+            <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select><div class="err" id="e_status"></div></div>
+            <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10"><div class="err" id="e_dt_admissao"></div><div class="hint" id="h_dt_admissao"></div></div>
+            <div class="field"><label>Equipe (SLA)</label><input id="m_equipe" disabled><div class="hint">Derivada de unidade + supervisor pelo painel de SLA — não se edita aqui.</div></div>
+            <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"><div class="err" id="e_horario_entrada"></div></div>
+            <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"><div class="err" id="e_horario_saida"></div></div>
+          </div>
+        </div>
       </div>
+      <div class="ficha" id="ficha"></div>
     </div>
-    <div class="stamp" id="stamp"></div>
     <div class="lockmsg" id="lockmsg" style="display:none"></div>
     <div class="modal-f" id="modalFooter"></div>
   </div>
@@ -396,7 +444,7 @@ async function loadData() {
   if (!SB) { msg('Supabase não configurado.', true); return; }
   loading(true);
   var r = await SB.from('promotores')
-    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,email,horario_entrada,horario_saida,updated_at,updated_by')
+    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,horario_entrada,horario_saida,updated_at,updated_by')
     .order('nome_completo');
   loading(false);
   if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
@@ -410,7 +458,7 @@ async function loadData() {
         chave: k, ids: [], gups: [],
         nome_completo: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: '', dt_admissao: '', status: '', organizacao: '',
-        email: '', horario_entrada: '', horario_saida: '', updated_at: '', updated_by: ''
+        equipe: '', email: '', horario_entrada: '', horario_saida: '', updated_at: '', updated_by: ''
       };
       ordem.push(k);
     }
@@ -421,7 +469,7 @@ async function loadData() {
     [['nome_completo', 'nome_completo'], ['nome_abreviado', 'nome_abreviado'], ['area', 'area'],
      ['unidade', 'unidade'], ['supervisor', 'supervisor'], ['supervisor_direto', 'supervisor_direto'],
      ['gestao', 'gestao'], ['dt_admissao', 'dt_admissao'], ['organizacao', 'organizacao'],
-     ['email', 'email'], ['updated_by', 'updated_by']
+     ['equipe', 'equipe'], ['email', 'email'], ['updated_by', 'updated_by']
     ].forEach(function (par) { if (!p[par[0]] && row[par[1]]) p[par[0]] = row[par[1]]; });
     if (!p.status && row.status_promotor) p.status = row.status_promotor;
     if (!p.horario_entrada && row.horario_entrada) p.horario_entrada = String(row.horario_entrada).slice(0, 5);
@@ -740,12 +788,81 @@ function setErr(campo, txt) {
   if (e) e.textContent = txt;
   if (i) i.classList.add('bad');
 }
+// tempo de casa a partir da admissao (DD/MM/AAAA) -- o mesmo corte que o dashboard
+// Conversao do Time usa para as faixas 00-03 / 04-06 / 07-09 / 10-12 / >12 meses
+function mesesCasa(dt) {
+  var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dt || '');
+  if (!m) return null;
+  var d = new Date(+m[3], +m[2] - 1, +m[1]);
+  if (isNaN(d.getTime()) || d.getDate() !== +m[1]) return null;
+  var h = new Date(), n = (h.getFullYear() - d.getFullYear()) * 12 + (h.getMonth() - d.getMonth());
+  if (h.getDate() < d.getDate()) n--;
+  return n;
+}
+function tempoCasa(dt) {
+  var n = mesesCasa(dt);
+  if (n === null) return '';
+  if (n < 0) return 'admissão futura';
+  var a = Math.floor(n / 12), r = n % 12;
+  var t = (a ? a + (a > 1 ? ' anos' : ' ano') : '') + (a && r ? ' e ' : '') + (r ? r + (r > 1 ? ' meses' : ' mês') : '');
+  return (t || 'menos de 1 mês') + ' de casa';
+}
+function pintaTempoCasa() {
+  var h = document.getElementById('h_dt_admissao');
+  if (h) h.textContent = tempoCasa(document.getElementById('m_dt_admissao').value);
+}
+// ficha lateral: tudo o que o formulario NAO edita -- linhas de alias, equipe do SLA,
+// pendencias que travam os outros paineis e o carimbo da ultima alteracao
+function pintaFicha(r, isNew) {
+  var el = document.getElementById('ficha');
+  if (isNew) {
+    el.innerHTML = '<h4>Novo cadastro</h4><div class="fl-nota">Preencha os campos ao lado e clique em '
+      + '<b>Salvar</b>. A pessoa entra no cadastro como uma linha; grafias extras de Nome GUP '
+      + '(para casar os leads) são adicionadas pelo administrador.</div>';
+    return;
+  }
+  var stU = (r.status || 'ATIVO').toUpperCase();
+  var linhas = [
+    ['Situação', '<span class="badge ' + badgeClass(stU) + '">' + esc(stU) + '</span>'],
+    ['Gestão', esc(r.gestao || '—')],
+    ['Organização', esc(r.organizacao || '—')],
+    ['Supervisor', esc(r.supervisor || '—')],
+    ['Unidade', esc(r.unidade || '—')],
+    ['Equipe (SLA)', r.equipe ? esc(r.equipe) : '<span style="color:#a0a9b5">não definida</span>'],
+    ['Admissão', esc(r.dt_admissao || '—')],
+    ['Tempo de casa', esc(tempoCasa(r.dt_admissao) || '—')],
+    ['Jornada', (r.horario_entrada && r.horario_saida) ? esc(r.horario_entrada + ' às ' + r.horario_saida) : '—']
+  ];
+  var h = '<h4>Ficha</h4>' + linhas.map(function (l) {
+    return '<div class="fl"><span>' + l[0] + '</span><b>' + l[1] + '</b></div>';
+  }).join('');
+
+  h += '<h4>No banco</h4>'
+    + '<div class="fl"><span>Linhas do cadastro</span><b>' + r.ids.length + '</b></div>'
+    + '<div class="fl"><span>id</span><b>' + r.ids.join(', ') + '</b></div>'
+    + '<div class="fl"><span>Grafias de Nome GUP</span><b>' + (r.gups.length ? r.gups.map(esc).join('<br>') : '—') + '</b></div>'
+    + (r.ids.length > 1 ? '<div class="fl-nota" style="padding-top:6px">As grafias vêm dos leads do GUP e o campo fica travado — '
+        + 'editar por aqui apagaria uma delas. Quem ajusta é o administrador, direto no banco.</div>' : '')
+    + '<div class="fl"><span>Última alteração</span><b>' + (r.updated_at ? esc(fmtStamp(r.updated_at)) : '—') + '</b></div>'
+    + '<div class="fl"><span>Por</span><b>' + esc(r.updated_by || '—') + '</b></div>';
+
+  var falta = faltantes(r);
+  h += '<h4>Uso nos outros painéis</h4>';
+  if (falta.length) {
+    h += '<div class="fl-box fl-warn">⚠ Falta <b>' + esc(falta.join(', ')) + '</b>. '
+      + 'Sem isso o SLA (horário), a Conversão (admissão) e o filtro de Times (organização) '
+      + 'deixam esta pessoa de fora ou sem classificação.</div>';
+  } else {
+    h += '<div class="fl-box fl-ok">✓ Cadastro completo para o SLA, a Conversão e o filtro de Times.</div>';
+  }
+  el.innerHTML = h;
+}
 function openModal(chave) {
   var isNew = chave == null;
   var r = isNew
     ? { ids: [], gups: [], nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? window._perfil.gestao : 'FABIO'),
-        dt_admissao: '', organizacao: '', status: 'ATIVO', email: '', horario_entrada: '', horario_saida: '',
+        dt_admissao: '', organizacao: '', status: 'ATIVO', equipe: '', email: '', horario_entrada: '', horario_saida: '',
         updated_at: '', updated_by: '' }
     : window._pessoas.filter(function (x) { return x.chave === chave; })[0];
   if (!r) return;
@@ -753,7 +870,20 @@ function openModal(chave) {
   limpaErros();
 
   var ed = isNew ? podeCriar() : podeEditar(r.gestao);
-  document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : (r.nome_completo || r.nome_abreviado);
+  document.getElementById('modalTitle').textContent = isNew ? 'Novo promotor' : (r.nome_completo || r.nome_abreviado || '(sem nome)');
+
+  // tags do cabecalho: leitura rapida de quem e a pessoa, sem descer os olhos ate a ficha
+  var tags = [];
+  if (!isNew) {
+    if (r.nome_abreviado) tags.push(esc(r.nome_abreviado));
+    if (r.gestao) tags.push('Gestão ' + esc(r.gestao));
+    tags.push(esc((r.status || 'ATIVO').toUpperCase()));
+    if (r.ids.length > 1) tags.push(r.ids.length + ' grafias GUP');
+    if (!ed) tags.push('🔒 somente leitura');
+  } else {
+    tags.push('Novo registro');
+  }
+  document.getElementById('modalTags').innerHTML = tags.map(function (t) { return '<span class="mh-tag">' + t + '</span>'; }).join('');
 
   ['nome_completo', 'nome_abreviado', 'email', 'area', 'unidade', 'supervisor', 'supervisor_direto',
    'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
@@ -761,6 +891,9 @@ function openModal(chave) {
     el.value = r[f] || '';
     el.disabled = !ed;
   });
+  // equipe e do SLA (derivada de unidade+supervisor la): mostra, nunca grava
+  document.getElementById('m_equipe').value = r.equipe || '';
+  pintaTempoCasa();
 
   // nome GUP: quando a pessoa tem 2+ linhas de alias, editar aqui apagaria uma das grafias
   var gup = document.getElementById('m_nome_gup'), hint = document.getElementById('h_nome_gup');
@@ -768,7 +901,7 @@ function openModal(chave) {
   gup.value = multi ? r.gups.join(' / ') : (r.gups[0] || '');
   gup.disabled = !ed || multi;
   hint.textContent = multi
-    ? 'Esta pessoa tem ' + r.ids.length + ' grafias de nome GUP no cadastro (usadas para casar os leads). Alterar por aqui apagaria uma delas — peça ao administrador.'
+    ? 'Bloqueado: ' + r.ids.length + ' grafias — detalhe na ficha.'
     : '';
 
   var gestSel = document.getElementById('m_gestao');
@@ -792,10 +925,7 @@ function openModal(chave) {
     + ORGANIZACOES.map(function (o) { return '<option ' + (orgVal === o ? 'selected' : '') + '>' + o + '</option>'; }).join('');
   orgSel.disabled = !ed;
 
-  document.getElementById('stamp').textContent = (!isNew && r.updated_at)
-    ? ('Última alteração em ' + fmtStamp(r.updated_at) + (r.updated_by ? ' por ' + r.updated_by : '')
-       + ' · ' + r.ids.length + ' linha(s) no cadastro')
-    : (isNew ? '' : 'Sem registro de alteração pelo painel.');
+  pintaFicha(r, isNew);
 
   var lock = document.getElementById('lockmsg');
   if (ed) { lock.style.display = 'none'; }
@@ -927,6 +1057,7 @@ document.getElementById('m_dt_admissao').addEventListener('input', function () {
   if (v.length > 4) out = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
   else if (v.length > 2) out = v.slice(0, 2) + '/' + v.slice(2);
   this.value = out;
+  pintaTempoCasa();
 });
 
 // ── Enter em qualquer um dos dois campos envia o login ──
