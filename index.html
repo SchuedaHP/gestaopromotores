@@ -253,6 +253,7 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
             <div class="field"><label>Nome Abreviado <span class="req">*</span></label><input id="m_nome_abreviado"><div class="err" id="e_nome_abreviado"></div></div>
             <div class="field f-wide"><label>E-mail</label><input id="m_email" type="email" placeholder="nome@hapvida.com.br"><div class="err" id="e_email"></div></div>
             <div class="field"><label>Nome GUP</label><input id="m_nome_gup"><div class="err" id="e_nome_gup"></div><div class="hint" id="h_nome_gup"></div></div>
+            <div class="field"><label>Matrícula</label><input id="m_matricula" inputmode="numeric" maxlength="10" placeholder="só números"><div class="err" id="e_matricula"></div><div class="hint">Matrícula corporativa (MOP). Terceiros costumam não ter — pode ficar vazia.</div></div>
           </div>
         </div>
         <div class="sec">
@@ -304,8 +305,9 @@ var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
 var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO', 'FÉRIAS', 'LICENÇA'];
 var ORGANIZACOES = ['TIME PRÓPRIO', 'TIME TERCEIROS'];
 // campos que o modal edita; nome_gup e tratado a parte (e por linha, nao por pessoa)
-var CAMPOS = ['nome_completo', 'nome_abreviado', 'nome_gup', 'email', 'area', 'unidade', 'supervisor',
-  'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status', 'horario_entrada', 'horario_saida'];
+var CAMPOS = ['nome_completo', 'nome_abreviado', 'nome_gup', 'email', 'matricula', 'area', 'unidade',
+  'supervisor', 'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status',
+  'horario_entrada', 'horario_saida'];
 // texto livre que vai para o de-para -> normalizar sempre (o casamento la e por NOME)
 var CAIXA_ALTA = ['nome_completo', 'nome_abreviado', 'area', 'unidade', 'supervisor', 'supervisor_direto'];
 
@@ -444,7 +446,7 @@ async function loadData() {
   if (!SB) { msg('Supabase não configurado.', true); return; }
   loading(true);
   var r = await SB.from('promotores')
-    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,horario_entrada,horario_saida,updated_at,updated_by')
+    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,matricula,horario_entrada,horario_saida,updated_at,updated_by')
     .order('nome_completo');
   loading(false);
   if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
@@ -458,7 +460,8 @@ async function loadData() {
         chave: k, ids: [], gups: [],
         nome_completo: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: '', dt_admissao: '', status: '', organizacao: '',
-        equipe: '', email: '', horario_entrada: '', horario_saida: '', updated_at: '', updated_by: ''
+        equipe: '', email: '', matricula: '', horario_entrada: '', horario_saida: '',
+        updated_at: '', updated_by: ''
       };
       ordem.push(k);
     }
@@ -469,7 +472,7 @@ async function loadData() {
     [['nome_completo', 'nome_completo'], ['nome_abreviado', 'nome_abreviado'], ['area', 'area'],
      ['unidade', 'unidade'], ['supervisor', 'supervisor'], ['supervisor_direto', 'supervisor_direto'],
      ['gestao', 'gestao'], ['dt_admissao', 'dt_admissao'], ['organizacao', 'organizacao'],
-     ['equipe', 'equipe'], ['email', 'email'], ['updated_by', 'updated_by']
+     ['equipe', 'equipe'], ['email', 'email'], ['matricula', 'matricula'], ['updated_by', 'updated_by']
     ].forEach(function (par) { if (!p[par[0]] && row[par[1]]) p[par[0]] = row[par[1]]; });
     if (!p.status && row.status_promotor) p.status = row.status_promotor;
     if (!p.horario_entrada && row.horario_entrada) p.horario_entrada = String(row.horario_entrada).slice(0, 5);
@@ -584,7 +587,7 @@ function filtrados() {
     if (sup !== 'TODOS' && r.supervisor !== sup) return false;
     if (q) {
       var blob = (r.nome_completo + ' ' + r.gups.join(' ') + ' ' + r.nome_abreviado + ' '
-        + r.supervisor + ' ' + r.email).toLowerCase();
+        + r.supervisor + ' ' + r.email + ' ' + r.matricula).toLowerCase();
       if (blob.indexOf(q) < 0) return false;
     }
     return true;
@@ -623,6 +626,7 @@ var EXPORT_COLS = [
   { campo: 'nome_abreviado', titulo: 'NOME ABREVIADO', largura: 24 },
   { campo: 'gups', titulo: 'NOME GUP', largura: 26 },
   { campo: 'email', titulo: 'E-MAIL', largura: 30 },
+  { campo: 'matricula', titulo: 'MATRÍCULA', largura: 12 },
   { campo: 'area', titulo: 'ÁREA', largura: 16 },
   { campo: 'unidade', titulo: 'UNIDADE', largura: 18 },
   { campo: 'supervisor', titulo: 'SUPERVISOR', largura: 20 },
@@ -862,8 +866,8 @@ function openModal(chave) {
   var r = isNew
     ? { ids: [], gups: [], nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? window._perfil.gestao : 'FABIO'),
-        dt_admissao: '', organizacao: '', status: 'ATIVO', equipe: '', email: '', horario_entrada: '', horario_saida: '',
-        updated_at: '', updated_by: '' }
+        dt_admissao: '', organizacao: '', status: 'ATIVO', equipe: '', email: '', matricula: '',
+        horario_entrada: '', horario_saida: '', updated_at: '', updated_by: '' }
     : window._pessoas.filter(function (x) { return x.chave === chave; })[0];
   if (!r) return;
   window._modalKey = isNew ? null : chave;
@@ -887,8 +891,8 @@ function openModal(chave) {
   }
   document.getElementById('modalTags').innerHTML = tags.map(function (t) { return '<span class="mh-tag">' + t + '</span>'; }).join('');
 
-  ['nome_completo', 'nome_abreviado', 'email', 'area', 'unidade', 'supervisor', 'supervisor_direto',
-   'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
+  ['nome_completo', 'nome_abreviado', 'email', 'matricula', 'area', 'unidade', 'supervisor',
+   'supervisor_direto', 'dt_admissao', 'horario_entrada', 'horario_saida'].forEach(function (f) {
     var el = document.getElementById('m_' + f);
     el.value = r[f] || '';
     el.disabled = !ed;
@@ -969,6 +973,9 @@ function valida(raw, isNew) {
   if (!raw.gestao) ex('gestao', 'Obrigatório.');
   if (!raw.status) ex('status', 'Obrigatório.');
   if (raw.dt_admissao && !dataValida(raw.dt_admissao)) ex('dt_admissao', 'Use DD/MM/AAAA (data válida).');
+  // matricula nao e' obrigatoria (terceiro nao tem) e NAO e' unica: o proprio MOP repete duas
+  // -- 1268497 e 1222224 -- entao barrar duplicata travaria a edicao dessas quatro pessoas
+  if (raw.matricula && !/^\d{3,10}$/.test(raw.matricula)) ex('matricula', 'Só números (3 a 10 dígitos).');
   if (!emailValido(raw.email)) ex('email', 'E-mail inválido.');
   if (raw.email) {
     var dono = window._pessoas.filter(function (p) {
@@ -1011,7 +1018,8 @@ async function saveModal(isNew) {
     supervisor: raw.supervisor || null, supervisor_direto: raw.supervisor_direto || null,
     gestao: raw.gestao.toUpperCase(), dt_admissao: raw.dt_admissao || null,
     organizacao: raw.organizacao || null, status_promotor: raw.status.toUpperCase(),
-    email: raw.email || null, horario_entrada: raw.horario_entrada || null,
+    email: raw.email || null, matricula: raw.matricula || null,
+    horario_entrada: raw.horario_entrada || null,
     horario_saida: raw.horario_saida || null
   };
 
@@ -1060,6 +1068,11 @@ document.getElementById('m_dt_admissao').addEventListener('input', function () {
   else if (v.length > 2) out = v.slice(0, 2) + '/' + v.slice(2);
   this.value = out;
   pintaTempoCasa();
+});
+
+// ── matricula e' so numero: o MOP vem com espaco duro e o Excel gosta de virar cientifico ──
+document.getElementById('m_matricula').addEventListener('input', function () {
+  this.value = this.value.replace(/\D/g, '').slice(0, 10);
 });
 
 // ── Enter em qualquer um dos dois campos envia o login ──
