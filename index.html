@@ -287,9 +287,14 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 
 <script>
 // ════════════ SUPABASE — CRUD CADASTRO PROMOTORES ════════════
-// Projeto NOVO (31/07/2026) -- o antigo (vzzmlikrlgqaaxrufrwq) foi perdido.
-var SUPA_URL = "https://shyhegrrzcmbhgveojfa.supabase.co";
-var SUPA_ANON = "sb_publishable_ScPAaVadrMCmJ01b___a4A_m4F8_VJ8";
+// Projeto "DB - HAPVIDA" (ikhihjdkxnfarvwitdcy, sa-east-1/Sao Paulo).
+// 13/08/2026: repontado do shyhegrrzcmbhgveojfa (ca-central-1) para CA. Ate aqui o
+// app gravava no Canada e a cadeia diaria (build_sla, utils.load_promotores_df) lia
+// Sao Paulo -- edicao de supervisor nao chegava em dashboard nenhum, sem erro nenhum.
+// Mesma URL/key do `SLA - Atendimento\supabase_config.json`, de proposito: app e
+// build tem que ler o MESMO banco.
+var SUPA_URL = "https://ikhihjdkxnfarvwitdcy.supabase.co";
+var SUPA_ANON = "sb_publishable_91SmDRibhQYNRTL8VQK7Qg_Po7X5Voe";
 var SB = null;
 try { SB = window.supabase.createClient(SUPA_URL, SUPA_ANON); } catch (e) {}
 
