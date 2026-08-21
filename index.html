@@ -58,6 +58,7 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 .b-adm{background:#0057A8}
 .warn-inc{color:#c98a1b;font-weight:700;margin-left:5px;cursor:help}
 .alias-tag{display:inline-block;margin-left:6px;font-size:.68rem;color:#00519c;background:#e7f0fa;border:1px solid #c6dcf3;border-radius:9px;padding:1px 7px}
+.pix-tag{display:inline-block;margin-left:6px;font-size:.68rem;color:#8a4b1c;background:#fdf1e5;border:1px solid #f0d6bd;border-radius:9px;padding:1px 7px}
 #count{font-size:.8rem;color:#555;margin-left:auto}
 .opacity-low{opacity:.55}
 .loading{position:absolute;inset:0;background:rgba(255,255,255,.75);display:none;align-items:center;justify-content:center;font-weight:700;color:#0057A8;z-index:5}
@@ -191,6 +192,16 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
         <option value="ACTIONLINE">Actionline</option>
         <option value="TREINAMENTO">Treinamento</option>
       </select>
+      <select id="fCargo" onchange="render()" title="O cadastro deixou de ser só de vendedor em 20/08/2026">
+        <option value="TODOS">Todos os cargos</option>
+        <option value="PROMOTOR">Somente PROMOTOR</option>
+        <option value="NAO_PROMOTOR">Quem não vende</option>
+        <option value="ANALISTA">Analista</option>
+        <option value="ASSISTENTE">Assistente</option>
+        <option value="BACKOFFICE">BackOffice</option>
+        <option value="SUPERVISOR">Supervisor</option>
+        <option value="GERENTE">Gerente</option>
+      </select>
       <select id="fStatus" onchange="render()">
         <option value="ATIVO">Somente ATIVO</option>
         <option value="TODOS">Todos os status</option>
@@ -204,10 +215,15 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
       <select id="fSupervisor" onchange="render()">
         <option value="TODOS">Todos os supervisores</option>
       </select>
+      <select id="fPix" onchange="render()" title="Dados bancários para a planilha de transferência">
+        <option value="TODOS">PIX: todos</option>
+        <option value="SEM">Sem dados PIX</option>
+        <option value="COM">Com dados PIX</option>
+      </select>
       <input id="fSearch" type="text" placeholder="Buscar nome, GUP ou e-mail..." oninput="render()" style="min-width:210px">
       <span id="count"></span>
       <button class="btn btn-ghost" id="btnExport" onclick="exportXlsx()">⬇ Exportar Excel</button>
-      <button class="btn btn-blue" id="btnNovo" onclick="openModal(null)">+ Adicionar promotor</button>
+      <button class="btn btn-blue" id="btnNovo" onclick="openModal(null)">+ Adicionar pessoa</button>
     </div>
     <div class="tbl-wrap">
       <div class="loading" id="loading"><span class="spin"></span>carregando cadastro...</div>
@@ -254,6 +270,11 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
             <div class="field f-wide"><label>E-mail</label><input id="m_email" type="email" placeholder="nome@hapvida.com.br"><div class="err" id="e_email"></div></div>
             <div class="field"><label>Nome GUP</label><input id="m_nome_gup"><div class="err" id="e_nome_gup"></div><div class="hint" id="h_nome_gup"></div></div>
             <div class="field"><label>Matrícula</label><input id="m_matricula" inputmode="numeric" maxlength="10" placeholder="só números"><div class="err" id="e_matricula"></div><div class="hint">Matrícula corporativa (MOP). Terceiros costumam não ter — pode ficar vazia.</div></div>
+            <!-- ⭐ CARGO (20/08/2026). O cadastro deixou de ser so' de vendedor: analista,
+                 assistente, back-office, supervisor e gerente entraram para poder ter conta
+                 bancaria e sair na planilha de transferencia. SO' PROMOTOR conta como vendedor
+                 nos outros paineis (MVP, capacidade, SLA) -- ver _migracao_promotores_cargo.sql. -->
+            <div class="field"><label>Cargo <span class="req">*</span></label><select id="m_cargo" onchange="pintaCargo()"></select><div class="err" id="e_cargo"></div><div class="hint" id="h_cargo"></div></div>
           </div>
         </div>
         <div class="sec">
@@ -275,6 +296,23 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
             <div class="field"><label>Equipe (SLA)</label><input id="m_equipe" disabled><div class="hint">Derivada de unidade + supervisor pelo painel de SLA — não se edita aqui.</div></div>
             <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"><div class="err" id="e_horario_entrada"></div></div>
             <div class="field"><label>Horário de Saída <span class="req">*</span></label><input id="m_horario_saida" type="time"><div class="err" id="e_horario_saida"></div></div>
+          </div>
+        </div>
+        <!-- ═══ PIX ═══
+             Parece um bloco a mais da ficha, e no banco NAO e': mora em `public.promotores_pix`,
+             tabela irma com RLS propria e sem acesso para `anon`. A `promotores` e' lida pela chave
+             publica que esta' dentro deste HTML -- CPF e conta bancaria ali seriam dado publico.
+             Ver o cabecalho de `_migracao_promotores_pix.sql`. -->
+        <div class="sec">
+          <div class="sec-h">Dados bancários (PIX)</div>
+          <div class="grid3">
+            <div class="field"><label>Documento (CPF/CNPJ)</label><input id="m_pix_documento" inputmode="numeric" maxlength="18" placeholder="só números"><div class="err" id="e_pix_documento"></div><div class="hint">Coluna <b>Documento</b> da planilha de transferência. O zero da frente conta.</div></div>
+            <div class="field f-wide"><label>Chave PIX</label><input id="m_pix_chave_pix" placeholder="CPF, celular, e-mail ou chave aleatória"><div class="err" id="e_pix_chave_pix"></div></div>
+            <div class="field"><label>Banco</label><input id="m_pix_banco" placeholder="só quando não houver PIX"></div>
+            <div class="field"><label>Agência (com dígito)</label><input id="m_pix_agencia"></div>
+            <div class="field"><label>Conta (com dígito)</label><input id="m_pix_conta"></div>
+            <div class="field"><label>Conta poupança</label><input id="m_pix_conta_poupanca"></div>
+            <div class="field f-wide"><label>Observação</label><input id="m_pix_observacao" placeholder="vai na última coluna da planilha"></div>
           </div>
         </div>
       </div>
@@ -309,10 +347,26 @@ window._modalKey = null; // null = novo registro
 var GESTOES = ['FABIO', 'JOSY', 'ADMINISTRATIVO', 'ACTIONLINE', 'TREINAMENTO'];
 var STATUSES = ['ATIVO', 'DESLIGADO', 'AFASTADO', 'ADMINISTRATIVO', 'DESATIVADO', 'FÉRIAS', 'LICENÇA'];
 var ORGANIZACOES = ['TIME PRÓPRIO', 'TIME TERCEIROS'];
+// ⭐ CARGO (20/08/2026) -- mesma lista do CHECK `promotores_cargo_ck` no banco. Mexeu aqui,
+// mexa no _migracao_promotores_cargo.sql, senao o banco recusa o INSERT e a tela nao explica.
+var CARGOS = ['PROMOTOR', 'ANALISTA', 'ASSISTENTE', 'BACKOFFICE', 'SUPERVISOR', 'GERENTE'];
+var CARGO_PADRAO = 'PROMOTOR';
+// Quem NAO e' PROMOTOR nao alimenta SLA (horario), Conversao (admissao) nem o filtro Times
+// (organizacao): cobrar esses campos dele so' produziria alerta que ninguem pode resolver.
+function vende(r) { return (r && (r.cargo || CARGO_PADRAO)).toUpperCase() === CARGO_PADRAO; }
 // campos que o modal edita; nome_gup e tratado a parte (e por linha, nao por pessoa)
-var CAMPOS = ['nome_completo', 'nome_abreviado', 'nome_gup', 'email', 'matricula', 'area', 'unidade',
+var CAMPOS = ['nome_completo', 'nome_abreviado', 'nome_gup', 'email', 'matricula', 'cargo', 'area', 'unidade',
   'supervisor', 'supervisor_direto', 'gestao', 'dt_admissao', 'organizacao', 'status',
   'horario_entrada', 'horario_saida'];
+// ── dados bancarios: mesmos ids `m_`/`e_` dos outros campos (por isso entram em CAMPOS e
+// ganham de graca limpaErros/coletaModal), mas gravam em OUTRA tabela. O sufixo depois de
+// `pix_` e' o nome da coluna em public.promotores_pix -- COL_PIX faz a traducao no salvar.
+var CAMPOS_PIX = ['pix_documento', 'pix_chave_pix', 'pix_banco', 'pix_agencia', 'pix_conta',
+  'pix_conta_poupanca', 'pix_observacao'];
+var COL_PIX = { pix_documento: 'documento', pix_chave_pix: 'chave_pix', pix_banco: 'banco',
+  pix_agencia: 'agencia', pix_conta: 'conta', pix_conta_poupanca: 'conta_poupanca',
+  pix_observacao: 'observacao' };
+CAMPOS = CAMPOS.concat(CAMPOS_PIX);
 // texto livre que vai para o de-para -> normalizar sempre (o casamento la e por NOME)
 var CAIXA_ALTA = ['nome_completo', 'nome_abreviado', 'area', 'unidade', 'supervisor', 'supervisor_direto'];
 
@@ -451,7 +505,7 @@ async function loadData() {
   if (!SB) { msg('Supabase não configurado.', true); return; }
   loading(true);
   var r = await SB.from('promotores')
-    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,matricula,horario_entrada,horario_saida,updated_at,updated_by')
+    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,matricula,cargo,horario_entrada,horario_saida,updated_at,updated_by')
     .order('nome_completo');
   loading(false);
   if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
@@ -465,7 +519,7 @@ async function loadData() {
         chave: k, ids: [], gups: [],
         nome_completo: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: '', dt_admissao: '', status: '', organizacao: '',
-        equipe: '', email: '', matricula: '', horario_entrada: '', horario_saida: '',
+        equipe: '', email: '', matricula: '', cargo: '', horario_entrada: '', horario_saida: '',
         updated_at: '', updated_by: ''
       };
       ordem.push(k);
@@ -477,18 +531,84 @@ async function loadData() {
     [['nome_completo', 'nome_completo'], ['nome_abreviado', 'nome_abreviado'], ['area', 'area'],
      ['unidade', 'unidade'], ['supervisor', 'supervisor'], ['supervisor_direto', 'supervisor_direto'],
      ['gestao', 'gestao'], ['dt_admissao', 'dt_admissao'], ['organizacao', 'organizacao'],
-     ['equipe', 'equipe'], ['email', 'email'], ['matricula', 'matricula'], ['updated_by', 'updated_by']
+     ['equipe', 'equipe'], ['email', 'email'], ['matricula', 'matricula'], ['cargo', 'cargo'],
+     ['updated_by', 'updated_by']
     ].forEach(function (par) { if (!p[par[0]] && row[par[1]]) p[par[0]] = row[par[1]]; });
     if (!p.status && row.status_promotor) p.status = row.status_promotor;
     if (!p.horario_entrada && row.horario_entrada) p.horario_entrada = String(row.horario_entrada).slice(0, 5);
     if (!p.horario_saida && row.horario_saida) p.horario_saida = String(row.horario_saida).slice(0, 5);
     if (row.updated_at && row.updated_at > p.updated_at) { p.updated_at = row.updated_at; p.updated_by = row.updated_by || p.updated_by; }
   });
-  window._pessoas = ordem.map(function (k) { var p = mapa[k]; if (!p.status) p.status = 'ATIVO'; return p; });
+  window._pessoas = ordem.map(function (k) {
+    var p = mapa[k];
+    if (!p.status) p.status = 'ATIVO';
+    if (!p.cargo) p.cargo = CARGO_PADRAO;   // coluna NOT NULL no banco; defensivo para linha antiga em cache
+    return p;
+  });
+  await loadPix();
   window._loaded = true;
   fillSupervisorFilter(window._pessoas);
+  aplicaLinkEntrada();
   renderKpis();
   render();
+}
+
+// ⭐ Deep link vindo do painel de campanhas (20/08/2026): ?busca=NOME&pix=SEM&status=TODOS.
+// A barreira da planilha PIX lista quem falta e manda para ca'; sem isso o "ajudar a
+// cadastrar" viraria "abre a lista de 347 e procura".
+// ⚠️ `status=TODOS` importa: parte dos pendentes esta' DESLIGADA (comissao de boleto pago
+// depois da saida) e o filtro padrao e' ATIVO -- o link cairia numa lista VAZIA e leria como
+// "essa pessoa nao existe", que e' justamente o diagnostico errado.
+// Roda uma vez so' e nao chama render(): quem chama e' o carrega(), logo abaixo.
+function aplicaLinkEntrada() {
+  if (window._linkAplicado) return;
+  window._linkAplicado = true;
+  var qs;
+  try { qs = new URLSearchParams(location.search); } catch (e) { return; }
+  var busca = qs.get('busca'), pix = (qs.get('pix') || '').toUpperCase(),
+      st = (qs.get('status') || '').toUpperCase(), cg = (qs.get('cargo') || '').toUpperCase();
+  if (busca) document.getElementById('fSearch').value = busca;
+  if (pix === 'SEM' || pix === 'COM' || pix === 'TODOS') document.getElementById('fPix').value = pix;
+  if (cg === 'NAO_PROMOTOR' || CARGOS.indexOf(cg) >= 0) document.getElementById('fCargo').value = cg;
+  if (st) {
+    var sel = document.getElementById('fStatus');
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value.toUpperCase() === st) { sel.value = sel.options[i].value; break; }
+    }
+  }
+}
+
+// ── dados bancarios (public.promotores_pix) ──────────────────────────────────────────
+// Consulta SEPARADA, e nao um join embutido no select de promotores, por dois motivos: a
+// RLS da promotores_pix e' outra (o supervisor le' so' a gestao dele, o "somente consulta"
+// nao le' nada), e uma falha aqui NAO pode derrubar o cadastro -- quem abre a tela para
+// corrigir um horario nao deve encontrar tela vazia porque a tabela de PIX recusou.
+// Anexa em `pessoa.pix`; a pessoa com linhas de alias herda a primeira linha que tiver dado.
+async function loadPix() {
+  window._pessoas.forEach(function (p) { p.pix = null; });
+  var r = await SB.from('promotores_pix')
+    .select('promotor_id,documento,banco,agencia,conta,conta_poupanca,chave_pix,observacao,atualizado_em,atualizado_por');
+  if (r.error) {
+    window._pixErro = r.error.message || 'sem acesso';
+    return;
+  }
+  window._pixErro = '';
+  var porId = {};
+  (r.data || []).forEach(function (x) { porId[x.promotor_id] = x; });
+  window._pessoas.forEach(function (p) {
+    for (var i = 0; i < p.ids.length; i++) { if (porId[p.ids[i]]) { p.pix = porId[p.ids[i]]; break; } }
+  });
+}
+// ⚠️ MESMA regra do portao da planilha de transferencia (`pixPagavel` no painel de
+// campanhas). Tem de ser a mesma, senao o filtro "PIX: sem" daqui lista um conjunto e o
+// painel bloqueia outro -- e a pessoa preenche a ficha achando que resolveu.
+// Documento sozinho nao paga (falta destino) e chave sozinha tambem nao (a remessa confere a
+// chave contra o CPF). Observacao NUNCA conta: e' recado para quem faz a remessa.
+function temPix(p) {
+  var x = p && p.pix;
+  if (!x) return false;
+  if (!/^([0-9]{11}|[0-9]{14})$/.test(String(x.documento || '').replace(/[^0-9]/g, ''))) return false;
+  return !!(x.chave_pix || (x.banco && x.agencia && (x.conta || x.conta_poupanca)));
 }
 
 function fillSupervisorFilter(rows) {
@@ -506,11 +626,16 @@ function fillSupervisorFilter(rows) {
 // e por PESSOA, nao por linha (o cadastro repete a pessoa nas linhas de alias).
 function renderKpis() {
   var n = { FABIO: 0, JOSY: 0 };
+  var apoio = { FABIO: 0, JOSY: 0 };
   var org = { FABIO: { proprio: 0, terceiros: 0, sem: 0 }, JOSY: { proprio: 0, terceiros: 0, sem: 0 } };
   window._pessoas.forEach(function (r) {
     if ((r.status || 'ATIVO').toUpperCase() !== 'ATIVO') return;
     var g = (r.gestao || '').toUpperCase();
     if (n[g] === undefined) return;
+    // ⚠️ SO' PROMOTOR entra no numero grande. E' este card que o David confere contra o
+    // "Vendedores" do Ranking do Vendas Diaria -- se um analista entrasse aqui, os dois
+    // numeros passariam a divergir sem nada na tela explicando por que.
+    if (!vende(r)) { apoio[g]++; return; }
     n[g]++;
     var o = (r.organizacao || '').toUpperCase();
     if (o.indexOf('PRÓPRIO') >= 0 || o.indexOf('PROPRIO') >= 0) org[g].proprio++;
@@ -519,17 +644,23 @@ function renderKpis() {
   });
   document.getElementById('kpiFabio').textContent = n.FABIO;
   document.getElementById('kpiJosy').textContent = n.JOSY;
-  document.getElementById('kpiFabioSplit').innerHTML = splitHtml(org.FABIO);
-  document.getElementById('kpiJosySplit').innerHTML = splitHtml(org.JOSY);
+  document.getElementById('kpiFabioSplit').innerHTML = splitHtml(org.FABIO, apoio.FABIO);
+  document.getElementById('kpiJosySplit').innerHTML = splitHtml(org.JOSY, apoio.JOSY);
 }
-function splitHtml(o) {
+function splitHtml(o, apoio) {
   var h = '<span class="k-org" title="TIME PRÓPRIO"><b>' + o.proprio + '</b> interno</span>'
     + '<span class="k-org" title="TIME TERCEIROS"><b>' + o.terceiros + '</b> terceiros</span>';
   if (o.sem) h += '<span class="k-org k-org-sem" title="Organização não preenchida no cadastro"><b>' + o.sem + '</b> sem organização</span>';
+  // fora do numero grande de proposito -- mas visivel, senao "sumiu gente do cadastro"
+  if (apoio) h += '<span class="k-org" title="Analista/assistente/back-office/supervisor/gerente ATIVOS — não contam como vendedor">'
+    + '<b>' + apoio + '</b> não vendem</span>';
   return h;
 }
 function kpiFilter(gestao) {
   document.getElementById('fGestao').value = gestao;
+  // o card conta SO' PROMOTOR -- o filtro tem de dizer a mesma coisa, senao a lista abre com
+  // mais gente do que o numero clicado
+  document.getElementById('fCargo').value = 'PROMOTOR';
   document.getElementById('fStatus').value = 'ATIVO';
   document.getElementById('fSupervisor').value = 'TODOS';
   document.getElementById('fSearch').value = '';
@@ -575,6 +706,10 @@ function badgeClass(st) {
 // o que falta para os OUTROS paineis (SLA usa horario; Conversao usa admissao; Times usa organizacao)
 function faltantes(r) {
   var f = [];
+  // Quem nao vende nao entra no SLA (horário), na Conversão (admissão) nem no filtro Times
+  // (organização) -- so' no cadastro e na planilha de transferência. Cobrar esses campos dele
+  // seria alerta permanente sem conserto possivel.
+  if (!vende(r)) return f;
   if (!r.dt_admissao) f.push('admissão');
   if (!r.organizacao) f.push('organização');
   if (!r.horario_entrada || !r.horario_saida) f.push('horário');
@@ -585,11 +720,17 @@ function filtrados() {
   var gt = document.getElementById('fGestao').value;
   var st = document.getElementById('fStatus').value;
   var sup = document.getElementById('fSupervisor').value;
+  var px = document.getElementById('fPix').value;
+  var cg = document.getElementById('fCargo').value;
   var q = norm(document.getElementById('fSearch').value).toLowerCase();
   return window._pessoas.filter(function (r) {
     if (gt !== 'TODOS' && (r.gestao || '').toUpperCase() !== gt) return false;
     if (st !== 'TODOS' && (r.status || 'ATIVO').toUpperCase() !== st) return false;
     if (sup !== 'TODOS' && r.supervisor !== sup) return false;
+    if (cg === 'NAO_PROMOTOR') { if (vende(r)) return false; }
+    else if (cg !== 'TODOS' && (r.cargo || CARGO_PADRAO).toUpperCase() !== cg) return false;
+    if (px === 'SEM' && temPix(r)) return false;
+    if (px === 'COM' && !temPix(r)) return false;
     if (q) {
       var blob = (r.nome_completo + ' ' + r.gups.join(' ') + ' ' + r.nome_abreviado + ' '
         + r.supervisor + ' ' + r.email + ' ' + r.matricula).toLowerCase();
@@ -600,7 +741,7 @@ function filtrados() {
 }
 function render() {
   var rows = sortRows(filtrados());
-  document.getElementById('count').textContent = rows.length + ' promotor(es)';
+  document.getElementById('count').textContent = rows.length + ' pessoa(s)';
   var body = '';
   rows.forEach(function (r) {
     var stU = (r.status || 'ATIVO').toUpperCase(), ativo = stU === 'ATIVO';
@@ -608,8 +749,13 @@ function render() {
     var alias = r.ids.length > 1 ? '<span class="alias-tag" title="' + esc(r.gups.join(' / ')) + '">' + r.ids.length + ' grafias GUP</span>' : '';
     body += '<tr onclick="openModal(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
       + '<td>' + esc(r.nome_completo || '(sem nome completo)') + alias
-      + (falta.length ? '<span class="warn-inc" title="Cadastro incompleto: falta ' + esc(falta.join(', ')) + '">⚠</span>' : '') + '</td>'
-      + '<td>' + esc(r.nome_abreviado) + '</td>'
+      + (falta.length ? '<span class="warn-inc" title="Cadastro incompleto: falta ' + esc(falta.join(', ')) + '">⚠</span>' : '')
+      // so' para quem esta' ATIVO: promotor desligado sem PIX nao e' pendencia, e a marca em
+      // todo mundo viraria ruido na tela inteira
+      + (ativo && !temPix(r) ? '<span class="pix-tag" title="Sem documento nem chave PIX — sai em branco na planilha de transferência">sem PIX</span>' : '') + '</td>'
+      + '<td>' + esc(r.nome_abreviado)
+      + (vende(r) ? '' : '<span class="alias-tag" title="Não é vendedor — fora do headcount de promotores">'
+          + esc((r.cargo || '').toUpperCase()) + '</span>') + '</td>'
       + '<td class="c-mail" title="' + esc(r.email) + '">' + esc(r.email) + '</td>'
       + '<td>' + esc(r.supervisor) + '</td>'
       + '<td>' + esc(r.gestao) + '</td>'
@@ -619,7 +765,7 @@ function render() {
       + '<td class="col-opt" title="' + esc(r.updated_by || '') + '">' + esc(fmtStamp(r.updated_at)) + '</td>'
       + '</tr>';
   });
-  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="9" style="padding:16px;color:#888">Nenhum promotor encontrado.</td></tr>';
+  document.getElementById('tbody').innerHTML = body || '<tr><td colspan="9" style="padding:16px;color:#888">Ninguém encontrado com esses filtros.</td></tr>';
   updateHeaderArrows();
 }
 
@@ -632,6 +778,7 @@ var EXPORT_COLS = [
   { campo: 'gups', titulo: 'NOME GUP', largura: 26 },
   { campo: 'email', titulo: 'E-MAIL', largura: 30 },
   { campo: 'matricula', titulo: 'MATRÍCULA', largura: 12 },
+  { campo: 'cargo', titulo: 'CARGO', largura: 14 },
   { campo: 'area', titulo: 'ÁREA', largura: 16 },
   { campo: 'unidade', titulo: 'UNIDADE', largura: 18 },
   { campo: 'supervisor', titulo: 'SUPERVISOR', largura: 20 },
@@ -781,7 +928,7 @@ function exportXlsx() {
   a.download = nome;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
-  msg(linhas.length + ' promotor(es) exportado(s) — ' + e.rotulo + '.', false);
+  msg(linhas.length + ' pessoa(s) exportada(s) — ' + e.rotulo + '.', false);
 }
 
 // ════════════ MODAL ════════════
@@ -855,6 +1002,19 @@ function pintaFicha(r, isNew) {
     + '<div class="fl"><span>Última alteração</span><b>' + (r.updated_at ? esc(fmtStamp(r.updated_at)) : '—') + '</b></div>'
     + '<div class="fl"><span>Por</span><b>' + esc(r.updated_by || '—') + '</b></div>';
 
+  h += '<h4>Dados bancários</h4>';
+  if (window._pixErro) {
+    h += '<div class="fl-box fl-warn">⚠ Não foi possível ler os dados de PIX (' + esc(window._pixErro)
+      + '). Os campos ao lado ficam vazios — não salve por cima sem recarregar.</div>';
+  } else if (temPix(r)) {
+    h += '<div class="fl-box fl-ok">✓ Cadastrado — entra na planilha PIX do painel de campanhas.</div>'
+      + '<div class="fl"><span>Atualizado</span><b>' + (r.pix.atualizado_em ? esc(fmtStamp(r.pix.atualizado_em)) : '—') + '</b></div>'
+      + '<div class="fl"><span>Por</span><b>' + esc(r.pix.atualizado_por || '—') + '</b></div>';
+  } else {
+    h += '<div class="fl-box fl-warn">⚠ Sem documento e sem chave PIX. A planilha de transferência '
+      + 'ainda traz a pessoa e o valor, mas com as colunas em branco para preencher à mão.</div>';
+  }
+
   var falta = faltantes(r);
   h += '<h4>Uso nos outros painéis</h4>';
   if (falta.length) {
@@ -872,7 +1032,7 @@ function openModal(chave) {
     ? { ids: [], gups: [], nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
         supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? window._perfil.gestao : 'FABIO'),
         dt_admissao: '', organizacao: '', status: 'ATIVO', equipe: '', email: '', matricula: '',
-        horario_entrada: '', horario_saida: '', updated_at: '', updated_by: '' }
+        cargo: CARGO_PADRAO, horario_entrada: '', horario_saida: '', updated_at: '', updated_by: '' }
     : window._pessoas.filter(function (x) { return x.chave === chave; })[0];
   if (!r) return;
   window._modalKey = isNew ? null : chave;
@@ -887,6 +1047,7 @@ function openModal(chave) {
     // linhas institucionais (ADMINISTRATIVO, ADMINISTR / HAPVIDA...) repetem o mesmo texto
     // em todo campo -- sem isto o cabecalho mostrava a mesma palavra tres vezes
     if (r.nome_abreviado && norm(r.nome_abreviado).toUpperCase() !== norm(r.nome_completo).toUpperCase()) tags.push(esc(r.nome_abreviado));
+    if (!vende(r)) tags.push(esc((r.cargo || '').toUpperCase()));
     if (r.gestao) tags.push('Gestão ' + esc(r.gestao));
     tags.push(esc((r.status || 'ATIVO').toUpperCase()));
     if (r.ids.length > 1) tags.push(r.ids.length + ' grafias GUP');
@@ -902,6 +1063,13 @@ function openModal(chave) {
     el.value = r[f] || '';
     el.disabled = !ed;
   });
+  // dados bancarios: vem de outra tabela, entao de outro objeto (`r.pix`)
+  CAMPOS_PIX.forEach(function (f) {
+    var el = document.getElementById('m_' + f);
+    el.value = (r.pix && r.pix[COL_PIX[f]]) || '';
+    el.disabled = !ed;
+  });
+
   // equipe e do SLA (derivada de unidade+supervisor la): mostra, nunca grava
   document.getElementById('m_equipe').value = r.equipe || '';
   pintaTempoCasa();
@@ -929,6 +1097,15 @@ function openModal(chave) {
   if (stOpts.indexOf(stU) < 0) stOpts.push(stU);
   statSel.innerHTML = stOpts.map(function (s) { return '<option ' + (stU === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
   statSel.disabled = !ed;
+
+  // cargo: valor fora da lista viraria PROMOTOR calado -> a opcao atual entra na lista
+  var cargoSel = document.getElementById('m_cargo');
+  var cgU = (r.cargo || CARGO_PADRAO).toUpperCase();
+  var cgOpts = CARGOS.slice();
+  if (cgOpts.indexOf(cgU) < 0) cgOpts.push(cgU);
+  cargoSel.innerHTML = cgOpts.map(function (c) { return '<option ' + (cgU === c ? 'selected' : '') + '>' + c + '</option>'; }).join('');
+  cargoSel.disabled = !ed;
+  pintaCargo();
 
   var orgSel = document.getElementById('m_organizacao');
   var orgVal = (r.organizacao || '').toUpperCase();
@@ -969,6 +1146,16 @@ function coletaModal() {
   raw.email = raw.email.toLowerCase();
   return raw;
 }
+// A dica muda com o cargo porque a REGRA muda com o cargo: promotor precisa dos campos que
+// alimentam SLA/Conversao/Times; quem nao vende so' precisa de identidade + alocacao + PIX.
+function pintaCargo() {
+  var el = document.getElementById('m_cargo'), h = document.getElementById('h_cargo');
+  if (!el || !h) return;
+  h.textContent = (el.value || CARGO_PADRAO).toUpperCase() === CARGO_PADRAO
+    ? 'Vendedor — entra no headcount (MVP, capacidade, SLA).'
+    : 'Não vende: fica fora do headcount. Cadastrado para ter PIX e sair na planilha de transferência.';
+}
+
 function valida(raw, isNew) {
   limpaErros();
   var ok = true;
@@ -977,10 +1164,24 @@ function valida(raw, isNew) {
   if (!raw.nome_abreviado) ex('nome_abreviado', 'Obrigatório.');
   if (!raw.gestao) ex('gestao', 'Obrigatório.');
   if (!raw.status) ex('status', 'Obrigatório.');
+  // o banco tem CHECK: cargo fora da lista volta como erro cru do PostgREST
+  if (!raw.cargo) ex('cargo', 'Obrigatório.');
+  else if (CARGOS.indexOf(raw.cargo.toUpperCase()) < 0) ex('cargo', 'Cargo fora da lista aceita pelo banco.');
   if (raw.dt_admissao && !dataValida(raw.dt_admissao)) ex('dt_admissao', 'Use DD/MM/AAAA (data válida).');
   // matricula nao e' obrigatoria (terceiro nao tem) e NAO e' unica: o proprio MOP repete duas
   // -- 1268497 e 1222224 -- entao barrar duplicata travaria a edicao dessas quatro pessoas
   if (raw.matricula && !/^\d{3,10}$/.test(raw.matricula)) ex('matricula', 'Só números (3 a 10 dígitos).');
+  // ⚠️ 11 ou 14 exatos: e' o mesmo CHECK que a promotores_pix tem. O erro tem de aparecer aqui e
+  // nao na remessa do banco, que recusa o ARQUIVO inteiro e nao a linha. O Excel come o zero da
+  // frente do CPF -- por isso 10 digitos e' erro, e nao "quase certo".
+  if (raw.pix_documento && !/^(\d{11}|\d{14})$/.test(raw.pix_documento)) {
+    ex('pix_documento', raw.pix_documento.length < 11
+      ? 'Faltam dígitos — CPF tem 11 (conte o zero da frente).'
+      : 'CPF tem 11 dígitos e CNPJ tem 14.');
+  }
+  // Observacao SOZINHA e' valida de proposito ("pagar por TED, conta a confirmar"): ela viaja
+  // na planilha e e' recado para quem faz a remessa. So' nao conta como "tem PIX" (temPix()),
+  // entao a pessoa continua marcada como pendente na lista.
   if (!emailValido(raw.email)) ex('email', 'E-mail inválido.');
   if (raw.email) {
     var dono = window._pessoas.filter(function (p) {
@@ -989,9 +1190,16 @@ function valida(raw, isNew) {
     if (dono) ex('email', 'Já usado por ' + (dono.nome_completo || dono.nome_abreviado) + '.');
   }
   if (isNew) {
-    [['area', 'Área'], ['unidade', 'Unidade'], ['supervisor', 'Supervisor'], ['supervisor_direto', 'Supervisor Direto'],
-     ['dt_admissao', 'Admissão'], ['organizacao', 'Organização'], ['horario_entrada', 'Horário de Entrada'],
-     ['horario_saida', 'Horário de Saída']].forEach(function (par) {
+    // ⚠️ A lista de obrigatorios depende do CARGO. Os campos da direita existem para alimentar
+    // OUTROS paineis -- horario o SLA, admissao a Conversao, organizacao o filtro Times -- e
+    // nenhum deles enxerga quem nao vende. Exigi-los de um analista so' impediria o cadastro
+    // (que e' exatamente o que precisa acontecer para a planilha PIX sair completa).
+    var obrig = (raw.cargo || CARGO_PADRAO).toUpperCase() === CARGO_PADRAO
+      ? [['area', 'Área'], ['unidade', 'Unidade'], ['supervisor', 'Supervisor'], ['supervisor_direto', 'Supervisor Direto'],
+         ['dt_admissao', 'Admissão'], ['organizacao', 'Organização'], ['horario_entrada', 'Horário de Entrada'],
+         ['horario_saida', 'Horário de Saída']]
+      : [['area', 'Área'], ['unidade', 'Unidade']];
+    obrig.forEach(function (par) {
       if (!raw[par[0]]) ex(par[0], 'Obrigatório para um cadastro novo.');
     });
     var jaExiste = window._pessoas.filter(function (p) {
@@ -1024,6 +1232,7 @@ async function saveModal(isNew) {
     gestao: raw.gestao.toUpperCase(), dt_admissao: raw.dt_admissao || null,
     organizacao: raw.organizacao || null, status_promotor: raw.status.toUpperCase(),
     email: raw.email || null, matricula: raw.matricula || null,
+    cargo: (raw.cargo || CARGO_PADRAO).toUpperCase(),
     horario_entrada: raw.horario_entrada || null,
     horario_saida: raw.horario_saida || null
   };
@@ -1056,9 +1265,46 @@ async function saveModal(isNew) {
   } else {
     msg('Salvo: ' + raw.nome_completo + ' (' + o.status_promotor + ').', false);
   }
+  // ⚠️ O PIX vai DEPOIS e em separado: e' outra tabela, com outra RLS. Se ele falhar, a ficha
+  // ja' esta' salva -- por isso o aviso e' proprio e nao substitui o "Salvo" acima.
+  await salvaPix(isNew ? r.data.map(function (x) { return x.id; }) : pessoa.ids, raw);
   closeModal();
   await loadData();
 }
+// ── grava os dados bancarios ─────────────────────────────────────────────────────────
+// Uma linha por PESSOA, sempre no MENOR id do grupo de alias -- as outras linhas sao apagadas.
+// Sem isso, a mesma pessoa poderia guardar duas contas diferentes (uma por grafia de nome GUP)
+// e a planilha de transferencia pagaria a que o banco devolvesse primeiro.
+// Tudo em branco = apaga: e' como se tira uma conta errada do cadastro.
+async function salvaPix(ids, raw) {
+  if (!ids || !ids.length) return;
+  var alvo = ids.slice().sort(function (a, b) { return a - b; })[0];
+  var o = { promotor_id: alvo };
+  var vazio = true;
+  CAMPOS_PIX.forEach(function (f) {
+    var v = raw[f] || '';
+    o[COL_PIX[f]] = v || null;
+    if (v) vazio = false;
+  });
+  var extras = ids.filter(function (i) { return i !== alvo; });
+  if (extras.length) await SB.from('promotores_pix').delete().in('promotor_id', extras);
+
+  if (vazio) {
+    var d = await SB.from('promotores_pix').delete().eq('promotor_id', alvo);
+    if (d.error) msg('Dados bancários não foram apagados: ' + d.error.message, true);
+    return;
+  }
+  var r = await SB.from('promotores_pix').upsert(o, { onConflict: 'promotor_id' }).select();
+  if (r.error) {
+    msg(/row-level security|violates/i.test(r.error.message || '')
+      ? 'A ficha foi salva, mas o banco recusou os DADOS BANCÁRIOS para o seu perfil.'
+      : ('A ficha foi salva, mas os dados bancários não: ' + r.error.message), true);
+    return;
+  }
+  // RLS que barra a escrita nao vira erro: volta 0 linhas. Mesma armadilha do rem_fluxo.
+  if (!r.data || !r.data.length) msg('Os dados bancários não foram gravados — sem permissão nesta gestão.', true);
+}
+
 async function deactivateModal() {
   var nome = norm(document.getElementById('m_nome_completo').value) || 'este promotor';
   if (!window.confirm('Desativar ' + nome + '?\n\nO status vai para DESLIGADO. O registro continua no cadastro e pode ser reativado.')) return;
@@ -1078,6 +1324,11 @@ document.getElementById('m_dt_admissao').addEventListener('input', function () {
 // ── matricula e' so numero: o MOP vem com espaco duro e o Excel gosta de virar cientifico ──
 document.getElementById('m_matricula').addEventListener('input', function () {
   this.value = this.value.replace(/\D/g, '').slice(0, 10);
+});
+
+// ── documento tambem: quem copia do RH cola "449.112.218-01", e o banco quer 11 digitos ──
+document.getElementById('m_pix_documento').addEventListener('input', function () {
+  this.value = this.value.replace(/\D/g, '').slice(0, 14);
 });
 
 // ── Enter em qualquer um dos dois campos envia o login ──
