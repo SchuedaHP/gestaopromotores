@@ -58,6 +58,9 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 .b-adm{background:#0057A8}
 .warn-inc{color:#c98a1b;font-weight:700;margin-left:5px;cursor:help}
 .alias-tag{display:inline-block;margin-left:6px;font-size:.68rem;color:#00519c;background:#e7f0fa;border:1px solid #c6dcf3;border-radius:9px;padding:1px 7px}
+/* tags da pagina dedicada do promotor (24/08/2026) -- mesma ideia do .mh-tag do modal, so' que
+   pra fundo claro (o .mh-tag e' texto branco translucido, pensado pro cabecalho azul do modal) */
+.pg-tag{display:inline-block;margin-right:6px;font-size:.72rem;font-weight:700;letter-spacing:.03em;background:#e7f0fa;color:#00519c;border:1px solid #c6dcf3;border-radius:20px;padding:3px 11px}
 .pix-tag{display:inline-block;margin-left:6px;font-size:.68rem;color:#8a4b1c;background:#fdf1e5;border:1px solid #f0d6bd;border-radius:9px;padding:1px 7px}
 #count{font-size:.8rem;color:#555;margin-left:auto}
 .opacity-low{opacity:.55}
@@ -158,7 +161,7 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
   <span class="sub">Gestão do cadastro de promotores comerciais — Hapvida</span>
 </div>
 
-<div class="wrap">
+<div class="wrap" id="listaWrap">
 
   <div class="card authbar" id="authBar">
     <span id="authStatus" style="font-weight:700;color:#c0392b">🔒 Não autenticado</span>
@@ -248,6 +251,73 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 
 </div>
 
+<!-- ═══ PÁGINA DEDICADA DO PROMOTOR (24/08/2026) ═══
+     Substitui o clique-abre-modal antigo: agora clicar na linha leva para uma pagina cheia
+     (abrePagina/fechaPagina), com deep-link `?id=<chave>` no mesmo espirito simples do
+     `?v=NOME` do extrato-vendedor (URLSearchParams lido no boot, sem hash routing). Dentro dela,
+     duas acoes SEPARADAS: "Editar" (abre o modal de sempre, sem Status) e "Afastar" (painel
+     proprio, ve-lo abaixo) -- antes as duas coisas se misturavam no mesmo modal. -->
+<div class="wrap" id="pagePromotor" style="display:none">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="fechaPagina()">← Voltar</button>
+      <div style="flex:1;min-width:200px">
+        <div id="pagTitulo" style="font-size:1.2rem;font-weight:700;color:#003F7F"></div>
+        <div id="pagTags" style="margin-top:6px"></div>
+      </div>
+      <div id="pagAcoes" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+  <div class="ficha" id="pagFicha" style="max-width:760px;margin-bottom:14px"></div>
+
+  <!-- painel "Afastar": escolhe o tipo (Desligado/Afastado/Ferias/Licenca) e so' mostra os
+       campos daquele tipo. DESLIGADO e' evento pontual (so' data). Os outros 3 sao janela
+       (inicio/fim) com volta esperada -- Afastado ainda ganha um campo de Motivo, texto livre. -->
+  <div class="card" id="painelAfastar" style="display:none">
+    <div class="sec-h">Afastar / alterar situação</div>
+    <div class="grid3">
+      <div class="field">
+        <label>Tipo <span class="req">*</span></label>
+        <select id="af_tipo" onchange="pintaTipoAfastamento()">
+          <option value="DESLIGADO">Desligado</option>
+          <option value="AFASTADO">Afastado</option>
+          <option value="FÉRIAS">Férias</option>
+          <option value="LICENÇA">Licença</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid3" id="af_camposDeslig" style="display:none">
+      <div class="field">
+        <label>Data de desligamento <span class="req">*</span></label>
+        <input id="af_desligamento" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10">
+        <div class="err" id="e_af_desligamento"></div>
+        <div class="hint">Conta normal no MVP do mês da própria saída — só sai do cálculo a partir do mês seguinte.</div>
+      </div>
+    </div>
+    <div class="grid3" id="af_camposJanela" style="display:none">
+      <div class="field">
+        <label id="af_lblInicio">Início <span class="req">*</span></label>
+        <input id="af_inicio" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10">
+        <div class="err" id="e_af_inicio"></div>
+      </div>
+      <div class="field">
+        <label id="af_lblFim">Fim (opcional)</label>
+        <input id="af_fim" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10">
+        <div class="err" id="e_af_fim"></div>
+        <div class="hint">Quando a data de fim passar, o status volta pra ATIVO sozinho.</div>
+      </div>
+      <div class="field f-wide" id="af_campoMotivo" style="display:none">
+        <label>Motivo</label>
+        <input id="af_motivo" placeholder="Ex.: atestado médico, cirurgia...">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+      <button class="btn btn-blue" onclick="fechaAfastar()">Cancelar</button>
+      <button class="btn btn-green" id="btnSalvarAfastar" onclick="salvarAfastar()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- ═══ MODAL ═══ -->
@@ -291,7 +361,10 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
         <div class="sec">
           <div class="sec-h">Situação e jornada</div>
           <div class="grid3">
-            <div class="field"><label>Status <span class="req">*</span></label><select id="m_status"></select><div class="err" id="e_status"></div></div>
+            <!-- Status SO' aparece na criacao de um promotor novo (isNew) -- editar alguem ja'
+                 existente nao mexe mais em status por aqui: quem faz isso agora e' o botao
+                 "Afastar" da pagina dedicada (openModal esconde/mostra via #campoStatusNovo). -->
+            <div class="field" id="campoStatusNovo"><label>Status <span class="req">*</span></label><select id="m_status"></select><div class="err" id="e_status"></div></div>
             <div class="field"><label>Admissão <span class="req">*</span></label><input id="m_dt_admissao" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10"><div class="err" id="e_dt_admissao"></div><div class="hint" id="h_dt_admissao"></div></div>
             <div class="field"><label>Equipe (SLA)</label><input id="m_equipe" disabled><div class="hint">Derivada de unidade + supervisor pelo painel de SLA — não se edita aqui.</div></div>
             <div class="field"><label>Horário de Entrada <span class="req">*</span></label><input id="m_horario_entrada" type="time"><div class="err" id="e_horario_entrada"></div></div>
@@ -382,6 +455,9 @@ function dataValida(v) {
   return dt.getDate() === d && dt.getMonth() === mo - 1 && dt.getFullYear() === a;
 }
 function emailValido(v) { return !v || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+// DD/MM/AAAA <-> AAAA-MM-DD (coluna `date` do Postgres) -- os afastamentos gravam/leem nesse formato.
+function isoDate(br) { var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br || ''); return m ? (m[3] + '-' + m[2] + '-' + m[1]) : null; }
+function brDate(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? (m[3] + '/' + m[2] + '/' + m[1]) : ''; }
 function fmtStamp(iso) {
   if (!iso) return '';
   var d = new Date(iso);
@@ -485,6 +561,9 @@ async function doLogout() {
   if (SB) await SB.auth.signOut();
   window._rows = []; window._pessoas = []; window._loaded = false;
   window._perfil = { papel: 'leitura', gestao: '' };
+  window._paginaKey = null;
+  document.getElementById('pagePromotor').style.display = 'none';
+  document.getElementById('listaWrap').style.display = '';
   setAuth(null);
   renderKpis(); render();
   abrirLogin();
@@ -546,11 +625,19 @@ async function loadData() {
     return p;
   });
   await loadPix();
+  await loadAfastamentos();
+  await reativaAutomaticamente();
   window._loaded = true;
   fillSupervisorFilter(window._pessoas);
   aplicaLinkEntrada();
   renderKpis();
   render();
+  // se o usuario estava numa pagina dedicada (ex.: salvou pelo modal Editar ou pelo painel
+  // Afastar), repinta ela com o dado fresco em vez de deixa-lo "preso" na tela da lista.
+  if (window._paginaKey) {
+    var _atual = window._pessoas.filter(function (x) { return x.chave === window._paginaKey; })[0];
+    if (_atual) pintaPagina(_atual); else fechaPagina();
+  }
 }
 
 // ⭐ Deep link vindo do painel de campanhas (20/08/2026): ?busca=NOME&pix=SEM&status=TODOS.
@@ -576,6 +663,20 @@ function aplicaLinkEntrada() {
       if (sel.options[i].value.toUpperCase() === st) { sel.value = sel.options[i].value; break; }
     }
   }
+  // deep-link pra pagina de UM promotor (?id=<chave>) -- mesmo espirito simples do `?v=NOME`
+  // do extrato-vendedor (URLSearchParams lido uma vez no boot, sem hash routing). replaceState
+  // (nao pushState) porque essa entrada de URL ja' É o primeiro estado do historico.
+  var idParam = qs.get('id');
+  if (idParam) {
+    var alvo = window._pessoas.filter(function (x) { return x.chave === idParam; })[0];
+    if (alvo) {
+      window._paginaKey = idParam;
+      history.replaceState({ id: idParam }, '', location.href);
+      document.getElementById('listaWrap').style.display = 'none';
+      document.getElementById('pagePromotor').style.display = '';
+      pintaPagina(alvo);
+    }
+  }
 }
 
 // ── dados bancarios (public.promotores_pix) ──────────────────────────────────────────
@@ -598,6 +699,62 @@ async function loadPix() {
   window._pessoas.forEach(function (p) {
     for (var i = 0; i < p.ids.length; i++) { if (porId[p.ids[i]]) { p.pix = porId[p.ids[i]]; break; } }
   });
+}
+
+// ── historico de afastamentos (public.promotores_afastamentos, 24/08/2026) ───────────────────
+// MESMA razao de loadPix ser separada: RLS propria e falha aqui nao pode derrubar o cadastro.
+// Diferenca de grao: aqui e' HISTORICO (N linhas por pessoa, uma por evento), entao anexamos a
+// lista inteira (`pessoa.afastamentos`, mais recente primeiro) + atalhos para a pagina/painel
+// Afastar pre-preencherem sem re-filtrar toda vez: `_deslig` (ultimo DESLIGAMENTO), `_ferias`
+// (ultima FERIAS), `_afastado` (ultimo AFASTADO) e `_licenca` (ultima LICENCA), todos por
+// data_inicio mais recente. Estendido em 24/08/2026 (tarde, redesenho "Afastar") pra cobrir os
+// 4 tipos -- antes so' desligamento/ferias tinham atalho, e AFASTADO/LICENCA (que ja' apareciam
+// no dropdown Status) nunca tinham historico nenhum.
+async function loadAfastamentos() {
+  window._pessoas.forEach(function (p) {
+    p.afastamentos = []; p._deslig = null; p._ferias = null; p._afastado = null; p._licenca = null;
+  });
+  var r = await SB.from('promotores_afastamentos')
+    .select('id,promotor_id,tipo,data_inicio,data_fim,observacao')
+    .order('data_inicio', { ascending: false });
+  if (r.error) { window._afastErro = r.error.message || 'sem acesso'; return; }
+  window._afastErro = '';
+  var porId = {};
+  (r.data || []).forEach(function (x) { (porId[x.promotor_id] = porId[x.promotor_id] || []).push(x); });
+  window._pessoas.forEach(function (p) {
+    var todos = [];
+    p.ids.forEach(function (id) { if (porId[id]) todos = todos.concat(porId[id]); });
+    todos.sort(function (a, b) { return (b.data_inicio || '').localeCompare(a.data_inicio || ''); });
+    p.afastamentos = todos;
+    p._deslig = todos.filter(function (x) { return x.tipo === 'DESLIGAMENTO'; })[0] || null;
+    p._ferias = todos.filter(function (x) { return x.tipo === 'FERIAS'; })[0] || null;
+    p._afastado = todos.filter(function (x) { return x.tipo === 'AFASTADO'; })[0] || null;
+    p._licenca = todos.filter(function (x) { return x.tipo === 'LICENCA'; })[0] || null;
+  });
+}
+// ── retorno automatico ao ATIVO (24/08/2026, decisao do David) ───────────────────────────────
+// Quando o periodo TEMPORARIO (ferias/afastado/licenca) gravado ja' tem data_fim NO PASSADO, o
+// status do cadastro volta sozinho pra ATIVO -- sem isso o rotulo ficava "preso" ate' alguem
+// lembrar de editar (o calculo do MVP em vendas_diaria.py ja' nao dependia disso, ver PARTE
+// 1c-bis: a DATA manda mesmo com status desatualizado; mas os badges/KPIs deste app dependiam).
+// DESLIGADO fica de FORA de proposito -- e' definitivo, nao tem "volta".
+// Falha de RLS (supervisor sem acesso aquela gestao) e' engolida: mesmo espirito de "gate de UI
+// e' cosmetico, quem manda e' o banco" ja documentado no resto do arquivo.
+async function reativaAutomaticamente() {
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  var MAPA = { 'FÉRIAS': '_ferias', 'AFASTADO': '_afastado', 'LICENÇA': '_licenca' };
+  var alvos = window._pessoas.filter(function (p) {
+    var campo = MAPA[(p.status || '').toUpperCase()];
+    var per = campo && p[campo];
+    var fim = per && per.data_fim ? new Date(per.data_fim + 'T00:00:00') : null;
+    return fim && fim < hoje;
+  });
+  for (var i = 0; i < alvos.length; i++) {
+    try {
+      var rr = await SB.from('promotores').update({ status_promotor: 'ATIVO' }).in('id', alvos[i].ids);
+      if (!rr.error) alvos[i].status = 'ATIVO';
+    } catch (e) { /* sem permissao (RLS) nesta gestao -- ignora e segue */ }
+  }
 }
 // ⚠️ MESMA regra do portao da planilha de transferencia (`pixPagavel` no painel de
 // campanhas). Tem de ser a mesma, senao o filtro "PIX: sem" daqui lista um conjunto e o
@@ -747,7 +904,7 @@ function render() {
     var stU = (r.status || 'ATIVO').toUpperCase(), ativo = stU === 'ATIVO';
     var falta = ativo ? faltantes(r) : [];
     var alias = r.ids.length > 1 ? '<span class="alias-tag" title="' + esc(r.gups.join(' / ')) + '">' + r.ids.length + ' grafias GUP</span>' : '';
-    body += '<tr onclick="openModal(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
+    body += '<tr onclick="abrePagina(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')" class="' + (ativo ? '' : 'opacity-low') + '">'
       + '<td>' + esc(r.nome_completo || '(sem nome completo)') + alias
       + (falta.length ? '<span class="warn-inc" title="Cadastro incompleto: falta ' + esc(falta.join(', ')) + '">⚠</span>' : '')
       // so' para quem esta' ATIVO: promotor desligado sem PIX nao e' pendencia, e a marca em
@@ -767,6 +924,194 @@ function render() {
   });
   document.getElementById('tbody').innerHTML = body || '<tr><td colspan="9" style="padding:16px;color:#888">Ninguém encontrado com esses filtros.</td></tr>';
   updateHeaderArrows();
+}
+
+// ════════════ PÁGINA DEDICADA DO PROMOTOR (24/08/2026) ════════════
+// Antes, clicar na linha abria direto o modal de edicao (que tambem editava Status e as datas de
+// afastamento juntos). Agora o clique leva pra uma pagina cheia (mesmo <body>, so' troca o que
+// esta' visivel -- sem framework de rotas): #listaWrap some, #pagePromotor aparece. De la', duas
+// ACOES SEPARADAS: "Editar" (abre o modal de sempre, sem Status) e "Afastar" (painel proprio,
+// contido tambem em #pagePromotor).
+// Deep-link `?id=<chave>` tratado em aplicaLinkEntrada() (mesmo espirito simples do `?v=NOME` do
+// extrato-vendedor). window._paginaKey guarda a pessoa aberta -- loadData() usa isso pra repintar
+// a pagina (nao a lista) depois de qualquer salvamento feito a partir dela.
+window._paginaKey = null;
+function paginaAtual() {
+  return window._paginaKey ? window._pessoas.filter(function (x) { return x.chave === window._paginaKey; })[0] : null;
+}
+function abrePagina(chave) {
+  var r = window._pessoas.filter(function (x) { return x.chave === chave; })[0];
+  if (!r) return;
+  window._paginaKey = chave;
+  history.pushState({ id: chave }, '', '?id=' + encodeURIComponent(chave));
+  document.getElementById('listaWrap').style.display = 'none';
+  document.getElementById('pagePromotor').style.display = '';
+  pintaPagina(r);
+  window.scrollTo(0, 0);
+}
+function fechaPagina() {
+  window._paginaKey = null;
+  document.getElementById('pagePromotor').style.display = 'none';
+  document.getElementById('listaWrap').style.display = '';
+  if (location.search) history.pushState({}, '', location.pathname);
+}
+window.addEventListener('popstate', function (ev) {
+  var chave = ev.state && ev.state.id;
+  if (!chave) {
+    try { chave = new URLSearchParams(location.search).get('id'); } catch (e) { chave = null; }
+  }
+  var r = chave && window._pessoas.length ? window._pessoas.filter(function (x) { return x.chave === chave; })[0] : null;
+  if (r) {
+    window._paginaKey = chave;
+    document.getElementById('listaWrap').style.display = 'none';
+    document.getElementById('pagePromotor').style.display = '';
+    pintaPagina(r);
+  } else {
+    window._paginaKey = null;
+    document.getElementById('pagePromotor').style.display = 'none';
+    document.getElementById('listaWrap').style.display = '';
+  }
+});
+function pintaPagina(r) {
+  var ed = podeEditar(r.gestao);
+  document.getElementById('pagTitulo').textContent = r.nome_completo || r.nome_abreviado || '(sem nome)';
+  var tags = [];
+  if (r.nome_abreviado && norm(r.nome_abreviado).toUpperCase() !== norm(r.nome_completo).toUpperCase()) tags.push(esc(r.nome_abreviado));
+  if (!vende(r)) tags.push(esc((r.cargo || '').toUpperCase()));
+  if (r.gestao) tags.push('Gestão ' + esc(r.gestao));
+  tags.push(esc((r.status || 'ATIVO').toUpperCase()));
+  if (r.ids.length > 1) tags.push(r.ids.length + ' grafias GUP');
+  if (!ed) tags.push('🔒 somente leitura');
+  document.getElementById('pagTags').innerHTML = tags.map(function (t) { return '<span class="pg-tag">' + t + '</span>'; }).join('');
+
+  document.getElementById('pagAcoes').innerHTML = ed
+    ? '<button class="btn btn-blue" onclick="openModal(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')">✏️ Editar</button>'
+      + '<button class="btn btn-grey" onclick="abreAfastar()">🔻 Afastar</button>'
+    : '';
+
+  fechaAfastar();
+  pintaFicha(r, false, 'pagFicha');
+}
+
+// ── painel "Afastar" ──────────────────────────────────────────────────────────────────────────
+// Substitui o antigo bloco "Datas do afastamento" que vivia dentro do modal de edicao. Cobre os
+// 4 tipos do dropdown Status: DESLIGADO (evento pontual, so' data) e AFASTADO/FÉRIAS/LICENÇA
+// (janela inicio/fim, com volta esperada -- AFASTADO ainda ganha um campo de Motivo, texto livre).
+// Ao salvar, grava tanto o HISTORICO (promotores_afastamentos) quanto o status_promotor na
+// promotores -- o build (vendas_diaria.py, PARTE 1c-bis) ainda parte do status gravado para
+// decidir quem entra na checagem de data, entao os dois tem que andar juntos.
+var TIPOS_JANELA_AFASTAR = { 'FÉRIAS': 'ferias', 'AFASTADO': 'afastado', 'LICENÇA': 'licenca' };
+function abreAfastar() {
+  var r = paginaAtual();
+  if (!r) return;
+  var sel = document.getElementById('af_tipo');
+  var stU = (r.status || 'ATIVO').toUpperCase();
+  sel.value = (stU === 'DESLIGADO' || TIPOS_JANELA_AFASTAR[stU]) ? stU : 'DESLIGADO';
+  pintaTipoAfastamento();
+  document.getElementById('painelAfastar').style.display = '';
+  document.getElementById('painelAfastar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function fechaAfastar() {
+  document.getElementById('painelAfastar').style.display = 'none';
+  ['af_desligamento', 'af_inicio', 'af_fim', 'af_motivo'].forEach(function (id) {
+    var e = document.getElementById(id); if (e) e.value = '';
+  });
+  ['e_af_desligamento', 'e_af_inicio', 'e_af_fim'].forEach(function (id) {
+    var e = document.getElementById(id); if (e) e.textContent = '';
+  });
+}
+// Mostra so' o bloco certo pro tipo escolhido e pre-preenche a partir do periodo mais recente
+// DAQUELE tipo, guardando um SNAPSHOT em window._afastarSnapshot -- e' contra ele que
+// salvarAfastar() decide UPDATE (mesma data_inicio, ex.: so' completar a volta) vs INSERT (data
+// nova, ex.: segundo periodo de ferias no ano). Mesmo espirito do window._modalDeslig/_modalFerias
+// que existia no modal antigo.
+function pintaTipoAfastamento() {
+  var r = paginaAtual();
+  var tipo = document.getElementById('af_tipo').value;
+  var deslig = tipo === 'DESLIGADO', janela = !!TIPOS_JANELA_AFASTAR[tipo], afastado = tipo === 'AFASTADO';
+  document.getElementById('af_camposDeslig').style.display = deslig ? '' : 'none';
+  document.getElementById('af_camposJanela').style.display = janela ? '' : 'none';
+  document.getElementById('af_campoMotivo').style.display = afastado ? '' : 'none';
+  document.getElementById('af_lblInicio').innerHTML = (tipo === 'FÉRIAS' ? 'Início das férias' : 'Início') + ' <span class="req">*</span>';
+  document.getElementById('af_lblFim').textContent = (tipo === 'FÉRIAS' ? 'Fim das férias' : 'Fim') + ' (opcional)';
+
+  window._afastarSnapshot = null;
+  if (!r) return;
+  if (deslig) {
+    window._afastarSnapshot = r._deslig || null;
+    document.getElementById('af_desligamento').value = brDate(r._deslig && r._deslig.data_inicio);
+  } else if (janela) {
+    var campo = TIPOS_JANELA_AFASTAR[tipo], atual = r['_' + campo] || null;
+    window._afastarSnapshot = atual;
+    document.getElementById('af_inicio').value = brDate(atual && atual.data_inicio);
+    document.getElementById('af_fim').value = brDate(atual && atual.data_fim);
+    document.getElementById('af_motivo').value = (atual && atual.observacao) || '';
+  }
+}
+function validaAfastar(tipo) {
+  var ok = true;
+  function ex(campo, txt) { document.getElementById('e_' + campo).textContent = txt; ok = false; }
+  ['e_af_desligamento', 'e_af_inicio', 'e_af_fim'].forEach(function (id) {
+    document.getElementById(id).textContent = '';
+  });
+  if (tipo === 'DESLIGADO') {
+    var d = norm(document.getElementById('af_desligamento').value);
+    if (!d) ex('af_desligamento', 'Obrigatório.');
+    else if (!dataValida(d)) ex('af_desligamento', 'Use DD/MM/AAAA (data válida).');
+  } else {
+    var i = norm(document.getElementById('af_inicio').value), f = norm(document.getElementById('af_fim').value);
+    if (!i) ex('af_inicio', 'Obrigatório.');
+    else if (!dataValida(i)) ex('af_inicio', 'Use DD/MM/AAAA (data válida).');
+    if (f) {
+      if (!dataValida(f)) ex('af_fim', 'Use DD/MM/AAAA (data válida).');
+      else if (i && dataValida(i) && isoDate(f) < isoDate(i)) ex('af_fim', 'Fim não pode ser antes do início.');
+    }
+  }
+  return ok;
+}
+async function salvarAfastar() {
+  var r = paginaAtual();
+  if (!r) return;
+  if (!SB || !window._auth || !podeEditar(r.gestao)) { msg('Você não tem permissão para editar este promotor.', true); return; }
+  var tipo = document.getElementById('af_tipo').value;
+  if (!validaAfastar(tipo)) { msg('Confira os campos destacados.', true); return; }
+
+  var btn = document.getElementById('btnSalvarAfastar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  var alvo = r.ids.slice().sort(function (a, b) { return a - b; })[0];
+  var erro = null;
+
+  if (tipo === 'DESLIGADO') {
+    var novaData = isoDate(document.getElementById('af_desligamento').value);
+    var atualD = window._afastarSnapshot;
+    if (!atualD || atualD.data_inicio !== novaData) {
+      var rd = atualD
+        ? await SB.from('promotores_afastamentos').update({ data_inicio: novaData }).eq('id', atualD.id).select()
+        : await SB.from('promotores_afastamentos').insert({ promotor_id: alvo, tipo: 'DESLIGAMENTO', data_inicio: novaData }).select();
+      if (rd.error || !rd.data || !rd.data.length) erro = rd.error ? rd.error.message : 'sem permissão nesta gestão';
+    }
+  } else {
+    var tipoBanco = tipo === 'FÉRIAS' ? 'FERIAS' : (tipo === 'LICENÇA' ? 'LICENCA' : tipo);
+    var novoInicio = isoDate(document.getElementById('af_inicio').value);
+    var novoFim = isoDate(document.getElementById('af_fim').value);
+    var novoMotivo = tipo === 'AFASTADO' ? (norm(document.getElementById('af_motivo').value) || null) : null;
+    var atualJ = window._afastarSnapshot;
+    var rj = (atualJ && atualJ.data_inicio === novoInicio)
+      ? await SB.from('promotores_afastamentos').update({ data_fim: novoFim, observacao: novoMotivo }).eq('id', atualJ.id).select()
+      : await SB.from('promotores_afastamentos')
+          .insert({ promotor_id: alvo, tipo: tipoBanco, data_inicio: novoInicio, data_fim: novoFim, observacao: novoMotivo }).select();
+    if (rj.error || !rj.data || !rj.data.length) erro = rj.error ? rj.error.message : 'sem permissão nesta gestão';
+  }
+
+  if (!erro) {
+    var rs = await SB.from('promotores').update({ status_promotor: tipo }).in('id', r.ids).select();
+    if (rs.error || !rs.data || !rs.data.length) erro = rs.error ? rs.error.message : 'status não atualizado (sem permissão)';
+  }
+
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (erro) { msg('Não foi possível salvar: ' + erro, true); return; }
+  msg('Atualizado: ' + (r.nome_completo || r.nome_abreviado) + ' → ' + tipo + '.', false);
+  await loadData();
 }
 
 // ════════════ EXPORTAR .XLSX ════════════
@@ -967,10 +1312,11 @@ function pintaTempoCasa() {
   var h = document.getElementById('h_dt_admissao');
   if (h) h.textContent = tempoCasa(document.getElementById('m_dt_admissao').value);
 }
-// ficha lateral: tudo o que o formulario NAO edita -- linhas de alias, equipe do SLA,
-// pendencias que travam os outros paineis e o carimbo da ultima alteracao
-function pintaFicha(r, isNew) {
-  var el = document.getElementById('ficha');
+// ficha: tudo o que o formulario NAO edita -- linhas de alias, equipe do SLA, pendencias que
+// travam os outros paineis e o carimbo da ultima alteracao. `elId` (24/08/2026) deixa a MESMA
+// funcao pintar tanto o sidebar do modal ('ficha') quanto a pagina dedicada ('pagFicha').
+function pintaFicha(r, isNew, elId) {
+  var el = document.getElementById(elId || 'ficha');
   if (isNew) {
     el.innerHTML = '<h4>Novo cadastro</h4><div class="fl-nota">Preencha os campos ao lado e clique em '
       + '<b>Salvar</b>. A pessoa entra no cadastro como uma linha; grafias extras de Nome GUP '
@@ -1001,6 +1347,24 @@ function pintaFicha(r, isNew) {
         + 'editar por aqui apagaria uma delas. Quem ajusta é o administrador, direto no banco.</div>' : '')
     + '<div class="fl"><span>Última alteração</span><b>' + (r.updated_at ? esc(fmtStamp(r.updated_at)) : '—') + '</b></div>'
     + '<div class="fl"><span>Por</span><b>' + esc(r.updated_by || '—') + '</b></div>';
+
+  h += '<h4>Histórico de afastamentos</h4>';
+  if (window._afastErro) {
+    h += '<div class="fl-box fl-warn">⚠ Não foi possível ler o histórico (' + esc(window._afastErro) + ').</div>';
+  } else if (!r.afastamentos || !r.afastamentos.length) {
+    h += '<div class="fl-nota">Nenhum evento registrado. Sem data gravada aqui, a exclusão do MVP '
+      + 'usa só o Status (comportamento antigo).</div>';
+  } else {
+    var ROTULOS_AFAST = { DESLIGAMENTO: 'Desligamento', FERIAS: 'Férias', AFASTADO: 'Afastado', LICENCA: 'Licença' };
+    h += r.afastamentos.map(function (x) {
+      var rot = ROTULOS_AFAST[x.tipo] || x.tipo;
+      var per = x.tipo === 'DESLIGAMENTO'
+        ? esc(brDate(x.data_inicio))
+        : esc(brDate(x.data_inicio)) + ' – ' + (x.data_fim ? esc(brDate(x.data_fim)) : '<i>em andamento</i>');
+      if (x.observacao) per += ' <span style="color:#69778a;font-weight:400">(' + esc(x.observacao) + ')</span>';
+      return '<div class="fl"><span>' + esc(rot) + '</span><b>' + per + '</b></div>';
+    }).join('');
+  }
 
   h += '<h4>Dados bancários</h4>';
   if (window._pixErro) {
@@ -1090,13 +1454,15 @@ function openModal(chave) {
   // supervisor nao muda gente de gestao (o RLS recusaria de qualquer jeito)
   gestSel.disabled = !ed || window._perfil.papel === 'supervisor';
 
-  // status fora da lista viraria ATIVO sem avisar -> a opcao atual entra na lista
+  // Status: SO' aparece/e' editavel na criacao (isNew). Editar alguem ja' existente esconde o
+  // campo -- quem muda status agora e' o botao "Afastar" na pagina dedicada.
   var statSel = document.getElementById('m_status');
   var stU = (r.status || 'ATIVO').toUpperCase();
   var stOpts = STATUSES.slice();
   if (stOpts.indexOf(stU) < 0) stOpts.push(stU);
   statSel.innerHTML = stOpts.map(function (s) { return '<option ' + (stU === s ? 'selected' : '') + '>' + s + '</option>'; }).join('');
   statSel.disabled = !ed;
+  document.getElementById('campoStatusNovo').style.display = isNew ? '' : 'none';
 
   // cargo: valor fora da lista viraria PROMOTOR calado -> a opcao atual entra na lista
   var cargoSel = document.getElementById('m_cargo');
@@ -1126,8 +1492,7 @@ function openModal(chave) {
 
   var footer = document.getElementById('modalFooter');
   if (ed) {
-    footer.innerHTML = (isNew ? '' : '<button class="btn btn-grey" onclick="deactivateModal()">Desativar</button>')
-      + '<button class="btn btn-blue" onclick="closeModal()">Cancelar</button>'
+    footer.innerHTML = '<button class="btn btn-blue" onclick="closeModal()">Cancelar</button>'
       + '<button class="btn btn-green" id="btnSalvar" onclick="saveModal(' + (isNew ? 'true' : 'false') + ')">Salvar</button>';
   } else {
     footer.innerHTML = '<button class="btn btn-blue" onclick="closeModal()">Fechar</button>';
@@ -1155,7 +1520,6 @@ function pintaCargo() {
     ? 'Vendedor — entra no headcount (MVP, capacidade, SLA).'
     : 'Não vende: fica fora do headcount. Cadastrado para ter PIX e sair na planilha de transferência.';
 }
-
 function valida(raw, isNew) {
   limpaErros();
   var ok = true;
@@ -1163,7 +1527,8 @@ function valida(raw, isNew) {
   if (!raw.nome_completo) ex('nome_completo', 'Obrigatório.');
   if (!raw.nome_abreviado) ex('nome_abreviado', 'Obrigatório.');
   if (!raw.gestao) ex('gestao', 'Obrigatório.');
-  if (!raw.status) ex('status', 'Obrigatório.');
+  // status so' e' editado/exigido na criacao -- editar quem ja' existe usa o botao Afastar
+  if (isNew && !raw.status) ex('status', 'Obrigatório.');
   // o banco tem CHECK: cargo fora da lista volta como erro cru do PostgREST
   if (!raw.cargo) ex('cargo', 'Obrigatório.');
   else if (CARGOS.indexOf(raw.cargo.toUpperCase()) < 0) ex('cargo', 'Cargo fora da lista aceita pelo banco.');
@@ -1225,17 +1590,20 @@ async function saveModal(isNew) {
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   // updated_by/updated_at nao vao daqui: quem carimba e o trigger no banco (trg_promotores_stamp).
-  // equipe tambem nao: e campo so-SLA, derivado por _regerar_base_promotores.py.
+  // equipe tambem nao: e campo so-SLA, derivado por _regerar_base_promotores.py. status_promotor
+  // SO' entra aqui na criacao (isNew) -- editar quem ja' existe NUNCA deve mexer em status por
+  // este caminho (isso e' trabalho do botao Afastar, na pagina dedicada).
   var o = {
     nome_completo: raw.nome_completo, area: raw.area || null, unidade: raw.unidade || null,
     supervisor: raw.supervisor || null, supervisor_direto: raw.supervisor_direto || null,
     gestao: raw.gestao.toUpperCase(), dt_admissao: raw.dt_admissao || null,
-    organizacao: raw.organizacao || null, status_promotor: raw.status.toUpperCase(),
+    organizacao: raw.organizacao || null,
     email: raw.email || null, matricula: raw.matricula || null,
     cargo: (raw.cargo || CARGO_PADRAO).toUpperCase(),
     horario_entrada: raw.horario_entrada || null,
     horario_saida: raw.horario_saida || null
   };
+  if (isNew) o.status_promotor = raw.status.toUpperCase();
 
   var r;
   if (isNew) {
@@ -1263,11 +1631,12 @@ async function saveModal(isNew) {
   if (!isNew && r.data.length !== pessoa.ids.length) {
     msg('Atenção: ' + r.data.length + ' de ' + pessoa.ids.length + ' linhas gravadas.', true);
   } else {
-    msg('Salvo: ' + raw.nome_completo + ' (' + o.status_promotor + ').', false);
+    msg('Salvo: ' + raw.nome_completo + (isNew ? ' (' + o.status_promotor + ')' : '') + '.', false);
   }
   // ⚠️ O PIX vai DEPOIS e em separado: e' outra tabela, com outra RLS. Se ele falhar, a ficha
   // ja' esta' salva -- por isso o aviso e' proprio e nao substitui o "Salvo" acima.
-  await salvaPix(isNew ? r.data.map(function (x) { return x.id; }) : pessoa.ids, raw);
+  var idsGrupo = isNew ? r.data.map(function (x) { return x.id; }) : pessoa.ids;
+  await salvaPix(idsGrupo, raw);
   closeModal();
   await loadData();
 }
@@ -1305,13 +1674,6 @@ async function salvaPix(ids, raw) {
   if (!r.data || !r.data.length) msg('Os dados bancários não foram gravados — sem permissão nesta gestão.', true);
 }
 
-async function deactivateModal() {
-  var nome = norm(document.getElementById('m_nome_completo').value) || 'este promotor';
-  if (!window.confirm('Desativar ' + nome + '?\n\nO status vai para DESLIGADO. O registro continua no cadastro e pode ser reativado.')) return;
-  document.getElementById('m_status').value = 'DESLIGADO';
-  await saveModal(false);
-}
-
 // ── mascara de data no campo Admissao ──
 document.getElementById('m_dt_admissao').addEventListener('input', function () {
   var v = this.value.replace(/\D/g, '').slice(0, 8), out = v;
@@ -1319,6 +1681,16 @@ document.getElementById('m_dt_admissao').addEventListener('input', function () {
   else if (v.length > 2) out = v.slice(0, 2) + '/' + v.slice(2);
   this.value = out;
   pintaTempoCasa();
+});
+
+// ── mesma mascara para os 3 campos de data do painel Afastar ──
+['af_desligamento', 'af_inicio', 'af_fim'].forEach(function (id) {
+  document.getElementById(id).addEventListener('input', function () {
+    var v = this.value.replace(/\D/g, '').slice(0, 8), out = v;
+    if (v.length > 4) out = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+    else if (v.length > 2) out = v.slice(0, 2) + '/' + v.slice(2);
+    this.value = out;
+  });
 });
 
 // ── matricula e' so numero: o MOP vem com espaco duro e o Excel gosta de virar cientifico ──
