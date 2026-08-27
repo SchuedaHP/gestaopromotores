@@ -974,19 +974,23 @@ window.addEventListener('popstate', function (ev) {
 });
 function pintaPagina(r) {
   var ed = podeEditar(r.gestao);
+  var stU = (r.status || 'ATIVO').toUpperCase();
   document.getElementById('pagTitulo').textContent = r.nome_completo || r.nome_abreviado || '(sem nome)';
   var tags = [];
   if (r.nome_abreviado && norm(r.nome_abreviado).toUpperCase() !== norm(r.nome_completo).toUpperCase()) tags.push(esc(r.nome_abreviado));
   if (!vende(r)) tags.push(esc((r.cargo || '').toUpperCase()));
   if (r.gestao) tags.push('Gestão ' + esc(r.gestao));
-  tags.push(esc((r.status || 'ATIVO').toUpperCase()));
+  tags.push(esc(stU));
   if (r.ids.length > 1) tags.push(r.ids.length + ' grafias GUP');
   if (!ed) tags.push('🔒 somente leitura');
   document.getElementById('pagTags').innerHTML = tags.map(function (t) { return '<span class="pg-tag">' + t + '</span>'; }).join('');
 
+  // "✅ Reativar" (27/08/2026, pedido do David): só aparece pra quem nao esta' ATIVO -- volta
+  // adiantada de ferias/afastamento/licenca, ou readmissao apos DESLIGADO. Ver reativarAgora().
   document.getElementById('pagAcoes').innerHTML = ed
     ? '<button class="btn btn-blue" onclick="openModal(\'' + esc(r.chave).replace(/'/g, "\\'") + '\')">✏️ Editar</button>'
       + '<button class="btn btn-grey" onclick="abreAfastar()">🔻 Afastar</button>'
+      + (stU !== 'ATIVO' ? '<button class="btn btn-green" id="btnReativar" onclick="reativarAgora()">✅ Reativar</button>' : '')
     : '';
 
   fechaAfastar();
@@ -1111,6 +1115,53 @@ async function salvarAfastar() {
   btn.disabled = false; btn.textContent = 'Salvar';
   if (erro) { msg('Não foi possível salvar: ' + erro, true); return; }
   msg('Atualizado: ' + (r.nome_completo || r.nome_abreviado) + ' → ' + tipo + '.', false);
+  await loadData();
+}
+
+// ── "✅ Reativar" manual (27/08/2026, pedido do David) ───────────────────────────────────────
+// reativaAutomaticamente() so' volta o status sozinho quando a data de FIM do periodo ja' passou
+// -- se a pessoa voltou ANTES do previsto (adiantou ferias/afastamento/licenca) ou foi readmitida
+// depois de DESLIGADO, nao tinha jeito direto de marcar ATIVO na hora. Este botao faz explicito o
+// que ate' aqui so' dava pra fazer as escondidas (editar o Fim no painel Afastar pro passado e
+// esperar o proximo loadData() disparar a reativacao automatica): fecha o periodo em aberto
+// (FERIAS/AFASTADO/LICENCA) com data_fim = hoje -- pra nao deixar janela indefinida que o build
+// (vendas_diaria.py, PARTE 1c-bis) ainda leia como ausencia -- e grava status ATIVO direto.
+// DESLIGADO nao tem periodo (e' evento pontual, so' data_inicio): so' muda o status.
+function hojeIso() {
+  var d = new Date();
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+async function reativarAgora() {
+  var r = paginaAtual();
+  if (!r) return;
+  if (!SB || !window._auth || !podeEditar(r.gestao)) { msg('Você não tem permissão para editar este promotor.', true); return; }
+  var stU = (r.status || 'ATIVO').toUpperCase();
+  if (stU === 'ATIVO') return;
+  var nome = r.nome_completo || r.nome_abreviado;
+  var aviso = stU === 'DESLIGADO'
+    ? 'Reativar ' + nome + '?\n\nO status volta para ATIVO agora.'
+    : 'Reativar ' + nome + '?\n\nO status volta para ATIVO agora e o período de ' + stU.toLowerCase() + ' é encerrado hoje.';
+  if (!window.confirm(aviso)) return;
+
+  var btn = document.getElementById('btnReativar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reativando...'; }
+  var erro = null;
+
+  var campo = TIPOS_JANELA_AFASTAR[stU];
+  var aberto = campo && r['_' + campo];
+  if (aberto) {
+    var rj = await SB.from('promotores_afastamentos').update({ data_fim: hojeIso() }).eq('id', aberto.id).select();
+    if (rj.error || !rj.data || !rj.data.length) erro = rj.error ? rj.error.message : 'sem permissão nesta gestão';
+  }
+  if (!erro) {
+    var rs = await SB.from('promotores').update({ status_promotor: 'ATIVO' }).in('id', r.ids).select();
+    if (rs.error || !rs.data || !rs.data.length) erro = rs.error ? rs.error.message : 'status não atualizado (sem permissão)';
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '✅ Reativar'; }
+  if (erro) { msg('Não foi possível reativar: ' + erro, true); return; }
+  msg('Reativado: ' + nome + ' → ATIVO.', false);
   await loadData();
 }
 
