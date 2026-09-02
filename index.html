@@ -411,7 +411,7 @@ try { SB = window.supabase.createClient(SUPA_URL, SUPA_ANON); } catch (e) {}
 
 window._rows = [];      // linhas cruas do banco (1 por id)
 window._pessoas = [];   // 1 por pessoa (agrupa as linhas de alias do nome GUP)
-window._perfil = { papel: 'leitura', gestao: '' };
+window._perfil = { papel: 'leitura', gestoes: [] };
 window._auth = false;
 window._user = '';
 window._loaded = false;
@@ -512,18 +512,18 @@ function setAuth(user) {
   document.getElementById('logoutBtn').style.display = user ? '' : 'none';
 }
 async function loadPerfil() {
-  window._perfil = { papel: 'leitura', gestao: '' };
+  window._perfil = { papel: 'leitura', gestoes: [] };
   try {
-    var r = await SB.from('app_perfis').select('papel,gestao').limit(1);
+    var r = await SB.from('app_perfis').select('papel,gestoes').limit(1);
     if (!r.error && r.data && r.data.length) {
-      window._perfil = { papel: r.data[0].papel || 'leitura', gestao: r.data[0].gestao || '' };
+      window._perfil = { papel: r.data[0].papel || 'leitura', gestoes: r.data[0].gestoes || [] };
     }
   } catch (e) { /* sem perfil = leitura */ }
 }
 function pintaPerfil() {
   var p = window._perfil, el = document.getElementById('perfilPill'), h = '';
   if (p.papel === 'admin') h = '<span class="pill pill-admin">★ Administrador — edita todo o cadastro</span>';
-  else if (p.papel === 'supervisor') h = '<span class="pill pill-sup">✎ Supervisor — edita a gestão ' + esc(p.gestao || '(sem gestão)') + '</span>';
+  else if (p.papel === 'supervisor') h = '<span class="pill pill-sup">✎ Supervisor — edita a(s) gestão(ões) ' + esc((p.gestoes || []).join(', ') || '(sem gestão)') + '</span>';
   else h = '<span class="pill pill-ler">👁 Somente consulta — fale com o administrador para editar</span>';
   el.innerHTML = h;
   document.getElementById('btnNovo').style.display = podeCriar() ? '' : 'none';
@@ -534,10 +534,13 @@ function pintaPerfil() {
 function podeEditar(gestao) {
   var p = window._perfil || {};
   if (p.papel === 'admin') return true;
-  if (p.papel === 'supervisor') return !!p.gestao && norm(p.gestao).toUpperCase() === norm(gestao).toUpperCase();
+  if (p.papel === 'supervisor') {
+    var alvo = norm(gestao).toUpperCase();
+    return (p.gestoes || []).some(function (g) { return norm(g).toUpperCase() === alvo; });
+  }
   return false;
 }
-function podeCriar() { var p = window._perfil || {}; return p.papel === 'admin' || (p.papel === 'supervisor' && !!p.gestao); }
+function podeCriar() { var p = window._perfil || {}; return p.papel === 'admin' || (p.papel === 'supervisor' && (p.gestoes || []).length > 0); }
 
 async function checkLogin() {
   var btn = document.getElementById('login-btn'), err = document.getElementById('login-error');
@@ -560,7 +563,7 @@ async function checkLogin() {
 async function doLogout() {
   if (SB) await SB.auth.signOut();
   window._rows = []; window._pessoas = []; window._loaded = false;
-  window._perfil = { papel: 'leitura', gestao: '' };
+  window._perfil = { papel: 'leitura', gestoes: [] };
   window._paginaKey = null;
   document.getElementById('pagePromotor').style.display = 'none';
   document.getElementById('listaWrap').style.display = '';
@@ -1191,11 +1194,11 @@ var EXPORT_COLS = [
 function escopoExport() {
   var p = window._perfil || {};
   if (p.papel === 'admin') return { rows: window._pessoas.slice(), rotulo: 'todas as gestões', arq: 'TODAS' };
-  if (p.papel === 'supervisor' && p.gestao) {
-    var g = norm(p.gestao).toUpperCase();
+  if (p.papel === 'supervisor' && (p.gestoes || []).length) {
+    var gs = p.gestoes.map(function (x) { return norm(x).toUpperCase(); });
     return {
-      rows: window._pessoas.filter(function (r) { return norm(r.gestao).toUpperCase() === g; }),
-      rotulo: 'gestão ' + g, arq: g
+      rows: window._pessoas.filter(function (r) { return gs.indexOf(norm(r.gestao).toUpperCase()) >= 0; }),
+      rotulo: (gs.length > 1 ? 'gestões ' : 'gestão ') + gs.join(', '), arq: gs.join('_')
     };
   }
   return { rows: null, rotulo: '', arq: '' };   // leitura: sem exportacao
@@ -1445,7 +1448,7 @@ function openModal(chave) {
   var isNew = chave == null;
   var r = isNew
     ? { ids: [], gups: [], nome_completo: '', nome_gup: '', nome_abreviado: '', area: '', unidade: '', supervisor: '',
-        supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? window._perfil.gestao : 'FABIO'),
+        supervisor_direto: '', gestao: (window._perfil.papel === 'supervisor' ? ((window._perfil.gestoes || [])[0] || '') : 'FABIO'),
         dt_admissao: '', organizacao: '', status: 'ATIVO', equipe: '', email: '', matricula: '',
         cargo: CARGO_PADRAO, horario_entrada: '', horario_saida: '', updated_at: '', updated_by: '' }
     : window._pessoas.filter(function (x) { return x.chave === chave; })[0];
@@ -1499,11 +1502,16 @@ function openModal(chave) {
     : '';
 
   var gestSel = document.getElementById('m_gestao');
-  var gestOpts = GESTOES.slice();
+  var souSupervisor = window._perfil.papel === 'supervisor';
+  var minhasGestoes = souSupervisor ? (window._perfil.gestoes || []) : null;
+  // supervisor CRIANDO: so' escolhe entre as gestoes dele. Editando: gestOpts continua a lista
+  // cheia so' para a opcao atual (r.gestao) aparecer certa no <select> travado.
+  var gestOpts = (souSupervisor && isNew && minhasGestoes.length) ? minhasGestoes.slice() : GESTOES.slice();
   if (r.gestao && gestOpts.indexOf((r.gestao || '').toUpperCase()) < 0) gestOpts.push((r.gestao || '').toUpperCase());
   gestSel.innerHTML = gestOpts.map(function (g) { return '<option ' + ((r.gestao || '').toUpperCase() === g ? 'selected' : '') + '>' + g + '</option>'; }).join('');
-  // supervisor nao muda gente de gestao (o RLS recusaria de qualquer jeito)
-  gestSel.disabled = !ed || window._perfil.papel === 'supervisor';
+  // supervisor so' escolhe a gestao ao CRIAR (e so' entre as suas); editando, a gestao do
+  // promotor ja existente fica travada -- ele pode ter 2+ gestoes, mas nao move gente entre elas.
+  gestSel.disabled = !ed || (souSupervisor && !isNew);
 
   // Status: SO' aparece/e' editavel na criacao (isNew). Editar alguem ja' existente esconde o
   // campo -- quem muda status agora e' o botao "Afastar" na pagina dedicada.
@@ -1537,7 +1545,7 @@ function openModal(chave) {
   else {
     lock.style.display = '';
     lock.textContent = window._perfil.papel === 'supervisor'
-      ? '🔒 Você edita apenas a gestão ' + (window._perfil.gestao || '') + '. Este promotor é da gestão ' + (r.gestao || '—') + '.'
+      ? '🔒 Você edita apenas a(s) gestão(ões) ' + ((window._perfil.gestoes || []).join(', ') || '') + '. Este promotor é da gestão ' + (r.gestao || '—') + '.'
       : '🔒 Seu acesso é somente consulta. Peça ao administrador para liberar a edição.';
   }
 
@@ -1634,7 +1642,6 @@ async function saveModal(isNew) {
   if (!isNew && !podeEditar(pessoa.gestao)) { msg('Você não tem permissão para editar este promotor.', true); return; }
 
   var raw = coletaModal();
-  if (window._perfil.papel === 'supervisor') raw.gestao = (window._perfil.gestao || '').toUpperCase();
   if (!valida(raw, isNew)) return;
 
   var btn = document.getElementById('btnSalvar');
