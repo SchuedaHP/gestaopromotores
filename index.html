@@ -15,6 +15,8 @@ body{background:#f0f4f8;color:#222;font-size:13px}
 .wrap{max-width:1400px;margin:18px auto;padding:0 16px}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 18px;margin-bottom:14px}
 .authbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.syncbar{margin-top:-8px;padding:10px 14px;border-left:4px solid #7f8c8d;background:#f7f9fb;color:#34495e;font-size:.84rem}
+.syncbar.ok{border-left-color:#1a9b61;background:#eefaf4}.syncbar.warn{border-left-color:#e39b21;background:#fff8e8}
 .btn{border:none;padding:7px 14px;border-radius:5px;font-weight:700;cursor:pointer;font-size:.82rem}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-green{background:#1a7a4a;color:#fff}
@@ -169,6 +171,7 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
     <span style="flex:1"></span>
     <button id="logoutBtn" class="btn btn-red" style="display:none" onclick="doLogout()">Sair</button>
   </div>
+  <div class="card syncbar" id="syncStatus">Desdobramento mensal: consultando última sincronização…</div>
 
   <div class="kpis">
     <div class="kpi k-fabio" onclick="kpiFilter('FABIO')" title="Clique para filtrar a lista">
@@ -351,8 +354,8 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
           <div class="sec-h">Alocação</div>
           <div class="grid3">
             <div class="field"><label>Gestão <span class="req">*</span></label><select id="m_gestao"></select><div class="err" id="e_gestao"></div></div>
-            <div class="field"><label>Supervisor <span class="req">*</span></label><input id="m_supervisor"><div class="err" id="e_supervisor"></div></div>
-            <div class="field"><label>Supervisor Direto <span class="req">*</span></label><input id="m_supervisor_direto"><div class="err" id="e_supervisor_direto"></div></div>
+            <div class="field"><label>Supervisor (liderança) <span class="req">*</span></label><input id="m_supervisor" list="listaSupervisores"><datalist id="listaSupervisores"></datalist><div class="err" id="e_supervisor"></div><div class="hint">Vínculo de liderança e responsabilidade pela pessoa.</div></div>
+            <div class="field"><label>Supervisor Direto (ranking) <span class="req">*</span></label><input id="m_supervisor_direto" list="listaSupervisoresDiretos"><datalist id="listaSupervisoresDiretos"></datalist><div class="err" id="e_supervisor_direto"></div><div class="hint">Agrupamento usado nos rankings e no desdobramento mensal.</div></div>
             <div class="field"><label>Área <span class="req">*</span></label><input id="m_area"><div class="err" id="e_area"></div></div>
             <div class="field"><label>Unidade <span class="req">*</span></label><input id="m_unidade"><div class="err" id="e_unidade"></div></div>
             <div class="field"><label>Organização <span class="req">*</span></label><select id="m_organizacao"></select><div class="err" id="e_organizacao"></div></div>
@@ -501,6 +504,7 @@ async function entrar(user) {
   document.getElementById('login-input').value = '';
   await loadPerfil();
   pintaPerfil();
+  await loadDesdobramentoStatus();
   if (!window._loaded) loadData();
 }
 function setAuth(user) {
@@ -530,6 +534,28 @@ function pintaPerfil() {
   var bx = document.getElementById('btnExport'), e = escopoExport();
   bx.style.display = e.rows === null ? 'none' : '';
   bx.title = 'Baixa a base completa do seu acesso: ' + e.rotulo + ' (não segue os filtros da tela)';
+}
+async function loadDesdobramentoStatus() {
+  var el = document.getElementById('syncStatus');
+  if (!el || !SB) return;
+  try {
+    var r = await SB.rpc('desdobramento_status_atual');
+    if (r.error) throw r.error;
+    var d = r.data || {};
+    if (!d.competencia) {
+      el.className = 'card syncbar warn';
+      el.textContent = 'Desdobramento mensal: nenhum snapshot aprovado. A Remuneração permanece bloqueada.';
+      return;
+    }
+    var diverg = Number(d.divergencias || 0), sem = Number(d.sem_hierarquia || 0);
+    el.className = 'card syncbar ' + (diverg || sem ? 'warn' : 'ok');
+    el.textContent = 'Desdobramento ' + d.competencia + ' • aprovado em ' + fmtStamp(d.aprovado_em)
+      + ' por ' + (d.aprovado_por || '—') + ' • ' + diverg + ' divergência(s) no cadastro corrente'
+      + (sem ? ' • ' + sem + ' pessoa(s) SEM HIERARQUIA' : '');
+  } catch (e) {
+    el.className = 'card syncbar warn';
+    el.textContent = 'Desdobramento mensal: status indisponível até a migração administrativa ser aplicada.';
+  }
 }
 function podeEditar(gestao) {
   var p = window._perfil || {};
@@ -579,6 +605,7 @@ async function doLogout() {
 // Salvar escreve com .in('id', ids) -- e nao mais em "todo mundo que tem o mesmo nome
 // abreviado", que misturava gente diferente (ADMINISTRATIVO eram 9 linhas de 6 pessoas).
 function chavePessoa(row) {
+  if (norm(row.pessoa_id)) return 'PID|' + norm(row.pessoa_id);
   var nc = norm(row.nome_completo).toUpperCase();
   if (!nc) return '#' + row.id;                       // sem nome completo: linha isolada
   return nc + '|' + norm(row.nome_abreviado).toUpperCase();
@@ -587,7 +614,7 @@ async function loadData() {
   if (!SB) { msg('Supabase não configurado.', true); return; }
   loading(true);
   var r = await SB.from('promotores')
-    .select('id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,matricula,cargo,horario_entrada,horario_saida,updated_at,updated_by')
+    .select('id,pessoa_id,nome_gup,nome_completo,nome_abreviado,area,unidade,supervisor,supervisor_direto,gestao,dt_admissao,status_promotor,organizacao,equipe,email,matricula,cargo,horario_entrada,horario_saida,updated_at,updated_by')
     .order('nome_completo');
   loading(false);
   if (r.error) { msg('Erro ao carregar: ' + r.error.message, true); return; }
@@ -632,6 +659,7 @@ async function loadData() {
   await reativaAutomaticamente();
   window._loaded = true;
   fillSupervisorFilter(window._pessoas);
+  fillAllocationOptions(window._pessoas);
   aplicaLinkEntrada();
   renderKpis();
   render();
@@ -641,6 +669,18 @@ async function loadData() {
     var _atual = window._pessoas.filter(function (x) { return x.chave === window._paginaKey; })[0];
     if (_atual) pintaPagina(_atual); else fechaPagina();
   }
+}
+
+function fillAllocationOptions(rows) {
+  function fill(id, field) {
+    var vals = {};
+    (rows || []).forEach(function (r) { var v = norm(r[field]).toUpperCase(); if (v) vals[v] = true; });
+    document.getElementById(id).innerHTML = Object.keys(vals).sort().map(function (v) {
+      return '<option value="' + esc(v) + '"></option>';
+    }).join('');
+  }
+  fill('listaSupervisores', 'supervisor');
+  fill('listaSupervisoresDiretos', 'supervisor_direto');
 }
 
 // ⭐ Deep link vindo do painel de campanhas (20/08/2026): ?busca=NOME&pix=SEM&status=TODOS.
