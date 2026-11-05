@@ -161,6 +161,8 @@ td.c-mail{max-width:210px;overflow:hidden;text-overflow:ellipsis}
 <div class="h1">
   <h1>👥 Cadastro de Promotores</h1>
   <span class="sub">Gestão do cadastro de promotores comerciais — Hapvida</span>
+  <span style="flex:1"></span>
+  <a class="btn btn-ghost" href="hierarquia.html" style="text-decoration:none" title="Hierarquia de cada mês, em árvore, com a meta de cada pessoa">🌳 Hierarquia mensal</a>
 </div>
 
 <div class="wrap" id="listaWrap">
@@ -1702,6 +1704,8 @@ async function saveModal(isNew) {
     horario_saida: raw.horario_saida || null
   };
   if (isNew) o.status_promotor = raw.status.toUpperCase();
+  // 05/11/2026: ACTIONLINE é gestão FÁBIO com supervisor ACTIONLINE (os pipelines re-derivam o bloco próprio).
+  if (o.gestao === 'ACTIONLINE') { o.gestao = 'FABIO'; o.supervisor = 'ACTIONLINE'; }
 
   var r;
   if (isNew) {
@@ -1735,8 +1739,29 @@ async function saveModal(isNew) {
   // ja' esta' salva -- por isso o aviso e' proprio e nao substitui o "Salvo" acima.
   var idsGrupo = isNew ? r.data.map(function (x) { return x.id; }) : pessoa.ids;
   await salvaPix(idsGrupo, raw);
+  // Cadastro novo ENTRA na hierarquia da competência atual (e só isso: editar o cadastro depois não mexe
+  // em mês já montado — a posição mensal muda pela página Hierarquia mensal). Falha aqui não desfaz o cadastro.
+  if (isNew) await incluiNaHierarquiaMes(r.data[0], o);
   closeModal();
   await loadData();
+}
+// Regra de quem vira folha da árvore: a mesma do hierarquia_sync.py (promotor/assistente + gestões fixas).
+async function incluiNaHierarquiaMes(ficha, o) {
+  try {
+    var cargo = String(o.cargo || '').toUpperCase(), gest = String(o.gestao || '').toUpperCase();
+    var entra = cargo === 'PROMOTOR' || cargo === 'ASSISTENTE' || gest === 'ADMINISTRATIVO' || gest === 'TREINAMENTO';
+    if (!entra || !ficha || ficha.id == null) return;
+    var d = new Date(), mes = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-01';
+    var rr = await SB.rpc('hierarquia_incluir', { p_competencia: mes, p_promotor_id: ficha.id, p_campos: {}, p_motivo: 'cadastro novo' });
+    if (rr.error) {
+      if (/ja esta na hierarquia/i.test(rr.error.message || '')) return;
+      msg('Cadastrado, mas não entrou na hierarquia de ' + mes.slice(0, 7) + ': ' + rr.error.message + ' — inclua pela página Hierarquia mensal.', true);
+    } else {
+      msg('Incluído também na hierarquia de ' + mes.slice(0, 7) + '.', false);
+    }
+  } catch (e) {
+    msg('Cadastrado, mas a inclusão na hierarquia do mês falhou: ' + (e && e.message ? e.message : e), true);
+  }
 }
 // ── grava os dados bancarios ─────────────────────────────────────────────────────────
 // Uma linha por PESSOA, sempre no MENOR id do grupo de alias -- as outras linhas sao apagadas.
